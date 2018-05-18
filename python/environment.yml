@@ -1,0 +1,7 @@
+name: tuc
+dependencies: 
+  - python=3.6.5
+  - pip:
+    - jupyter
+    - matplotlib
+    - seaborn
