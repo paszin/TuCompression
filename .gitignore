@@ -2,3 +2,5 @@ data/*
 !data/.gitkeep
 python/.ipynb_checkpoints/*
 *.exe
+.idea
+env
