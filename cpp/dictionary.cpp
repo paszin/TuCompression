@@ -3,9 +3,9 @@
 /**
 	Compresses a column using dictionary encoding and a std::set to store the dictionary.
 */
-Dictionary::DictionaryCompressedColumn Dictionary::compress(std::vector<std::string> column) {
+CompressedColumn Dictionary::compress(std::vector<std::string> column) {
 	std::set<std::string> dictionary;
-	std::vector<std::size_t> attributeVector(column.size());
+	std::vector<size_t> attributeVector(column.size());
 
 	for(auto cell : column) {
 	  dictionary.emplace(cell);
@@ -19,5 +19,15 @@ Dictionary::DictionaryCompressedColumn Dictionary::compress(std::vector<std::str
 		i++;
 	}
 
-	return DictionaryCompressedColumn(dictionary, attributeVector);
+	return CompressedColumn(dictionary, attributeVector);
+}
+
+std::vector<std::string> Dictionary::decompress(CompressedColumn column) {
+	std::vector<size_t> attributeVector(column.attributeVector.begin(), column.attributeVector.end());
+	std::vector<std::string> decompressed(column.attributeVector.size());
+	int i = 0;
+	for(auto cell : column.attributeVector) {
+		decompressed[i] = attributeVector[cell];
+	}
+	return decompressed;
 }

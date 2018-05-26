@@ -1,19 +1,13 @@
+#pragma once
+
 #include <string>
 #include <vector>
-#include <set>
+#include "compressed.h"
 
 namespace Dictionary {
 
-	struct DictionaryCompressedColumn
-	{
-		std::set<std::string> dictionary;
-		std::vector<std::size_t> attributeVector;
+	CompressedColumn compress(std::vector<std::string> column);
 
-		DictionaryCompressedColumn(
-			std::set<std::string> dictionary,
-			std::vector<std::size_t> attributeVector) : dictionary(dictionary), attributeVector(attributeVector) { }
-	};
-
-	DictionaryCompressedColumn compress(std::vector<std::string> column);
+	std::vector<std::string> decompress(CompressedColumn column);
 
 }
