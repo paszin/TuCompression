@@ -6,8 +6,9 @@
 
 namespace Huffman {
 
-	CompressedColumn compress(std::vector<std::string> column);
+	CompressedColumn compress(const std::vector<std::string> &column);
 
-	std::vector<std::string> decompress(CompressedColumn column);
+	std::vector<std::string> decompress(const CompressedColumn &column);
 
+	size_t size(const CompressedColumn &column);
 }

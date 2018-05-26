@@ -15,7 +15,7 @@
 	Returns the elapsed time for each run.
 */
 template <typename T, typename O, typename I>
-std::vector<size_t> benchmark(std::function<O(I)> deAndCompress, int runs, I column, int warmup=10, bool clearCache=false) {
+std::vector<size_t> benchmark(std::function<O(const I&)> deAndCompress, int runs, const I &column, int warmup=10, bool clearCache=false) {
 	if (clearCache == false)
 	{
 		for (int i = 0; i < warmup; ++i)
@@ -41,7 +41,9 @@ std::vector<size_t> benchmark(std::function<O(I)> deAndCompress, int runs, I col
 
 // NOTE: I know the *Benchmark functions are duplicate code, but I don't see a use in refactoring everything to polymorphism.
 
-void dictionaryBenchmark(std::vector<std::string> header, std::vector<std::vector<std::string>> table) {
+// void benchmarkAlgorithm(const std::vector<std::string> &header, const std::vector<std::vector<std::string>> &table, AlgorithmClass/Object algorithm)
+
+void dictionaryBenchmark(const std::vector<std::string> &header, const std::vector<std::vector<std::string>> &table) {
 	// Compress
 	std::vector<CompressedColumn> compressedTable;
 	for (int i = 0; i < table.size(); ++i)
@@ -51,6 +53,7 @@ void dictionaryBenchmark(std::vector<std::string> header, std::vector<std::vecto
 		auto average = std::accumulate(runTimes.begin(), runTimes.end(), 0.0)/runTimes.size();
 		std::cout << "Dictionary Compression: Average Run Time for " << header[i] << ": " << average << std::endl;
 		auto compressedColumn = Dictionary::compress(column);
+		std::cout << "Size before: " << sizeof(column) << ", Size after: " << sizeof(compressedColumn) << std::endl;
 		compressedTable.push_back(compressedColumn);
 	}
 
@@ -67,7 +70,7 @@ void dictionaryBenchmark(std::vector<std::string> header, std::vector<std::vecto
 	}
 }
 
-void huffmanBenchmark(std::vector<std::string> header, std::vector<std::vector<std::string>> table) {
+void huffmanBenchmark(const std::vector<std::string> &header, const std::vector<std::vector<std::string>> &table) {
 	// Compress
 	std::vector<CompressedColumn> compressedTable;
 	for (int i = 0; i < table.size(); ++i)
@@ -94,12 +97,19 @@ void huffmanBenchmark(std::vector<std::string> header, std::vector<std::vector<s
 }
 
 int main(int argc, char* argv[]) {
-	std::string dataFile = "../data/order.short.tbl";
+	std::string dataFile = "../data/order.tbl";
 	auto header = CSV::headerFromFile(dataFile);
+	std::cout << "Loading table";
+	auto start = std::chrono::system_clock::now();
 	auto table = CSV::toColumnStore(dataFile);
+	auto end = std::chrono::system_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+	std::cout << "\rFinished loading in " << elapsed << " seconds" << std::endl;	
 
+	std::cout << "Benchmarking Dictionary Encoding" << std::endl;
 	dictionaryBenchmark(header, table);
 
+	std::cout << "Benchmarking Huffman Encoding" << std::endl;
 	huffmanBenchmark(header, table);
 
 

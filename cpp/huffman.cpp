@@ -1,6 +1,6 @@
 #include "huffman.h"
 
-CompressedColumn Huffman::compress(std::vector<std::string> column) {
+CompressedColumn Huffman::compress(const std::vector<std::string> &column) {
 	std::set<std::string> dictionary;
 	std::vector<size_t> attributeVector(column.size());
 
@@ -9,11 +9,16 @@ CompressedColumn Huffman::compress(std::vector<std::string> column) {
 	return CompressedColumn(dictionary, attributeVector);
 }
 
-std::vector<std::string> Huffman::decompress(CompressedColumn column) {
+std::vector<std::string> Huffman::decompress(const CompressedColumn &column) {
 	std::vector<size_t> attributeVector(column.attributeVector.begin(), column.attributeVector.end());
 	std::vector<std::string> decompressed(column.attributeVector.size());
 	
 	// TODO
 
 	return decompressed;
+}
+
+size_t Huffman::size(const CompressedColumn &column) {
+	// TODO
+	return 0;
 }
