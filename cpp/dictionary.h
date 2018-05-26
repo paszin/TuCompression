@@ -3,13 +3,17 @@
 #include <string>
 #include <vector>
 #include "compressed.h"
+#include "encoder.h"
 
-namespace Dictionary {
+template <typename D, typename A>
+class DictionaryEncoder: public Encoder<D, A>
+{
+public:
+	virtual CompressedColumn<D, A> compress(const std::vector<D> &column) override;
 
-	CompressedColumn compress(const std::vector<std::string> &column);
+	virtual std::vector<D> decompress(const CompressedColumn<D, A> &column) override;
 
-	std::vector<std::string> decompress(const CompressedColumn &column);
+	virtual size_t size(const CompressedColumn<D, A> &column) override;
+};
 
-	size_t size(const CompressedColumn &column);
-
-}
+#include "dictionary.hpp"

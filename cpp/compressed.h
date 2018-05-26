@@ -1,15 +1,15 @@
 #pragma once
 
-#include <string>
 #include <set>
 #include <vector>
 
+template <typename D, typename A>
 struct CompressedColumn
 {
-	std::set<std::string> dictionary;
-	std::vector<size_t> attributeVector;
+	std::set<D> dictionary;
+	std::vector<A> attributeVector;
 
 	CompressedColumn(
-		std::set<std::string> dictionary,
-		std::vector<size_t> attributeVector) : dictionary(dictionary), attributeVector(attributeVector) { }
+		std::set<D> dictionary,
+		std::vector<A> attributeVector) : dictionary(dictionary), attributeVector(attributeVector) { }
 };
