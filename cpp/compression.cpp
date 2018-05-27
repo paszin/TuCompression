@@ -12,15 +12,13 @@
 template <typename T>
 class ColumnBenchmark
 {
-public:
-	
-	template <typename D, typename A>
-	std::vector<size_t> compressBenchmark(Encoder<D,A> *encoder, const std::vector<D> &column, int runs, int warmup, bool clearCache) {
+	template <typename C>
+	std::vector<size_t> benchmark(std::function<C ()> wrapperFunction, int runs, int warmup, bool clearCache) {
 		if (clearCache == false)
 		{
 			for (int i = 0; i < warmup; ++i)
 			{
-				volatile auto compressed = encoder->compress(column);
+				volatile auto compressed = wrapperFunction();
 			}
 		}
 		auto runTimes = std::vector<size_t>(runs);
@@ -32,36 +30,28 @@ public:
 				// mem_flush(&column, sizeof(column));
 			}
 			auto start = std::chrono::system_clock::now();
-			volatile auto compressed = encoder->compress(column);
+			volatile auto compressed = wrapperFunction();
 			auto end = std::chrono::system_clock::now();
 			runTimes[i] = std::chrono::duration_cast<T>(end - start).count();
 		}
 		return runTimes;
 	}
 
+public:
+	template <typename D, typename A>
+	std::vector<size_t> compressBenchmark(Encoder<D,A> *encoder, const std::vector<D> &column, int runs, int warmup, bool clearCache) {
+		auto wrapperFunction = [&column, encoder]() {
+			return encoder->compress(column);
+		};
+		return benchmark<CompressedColumn<D, A>>(wrapperFunction, runs, warmup, clearCache);
+	}
+
 	template <typename D, typename A>
 	std::vector<size_t> decompressBenchmark(Encoder<D,A> *encoder, const CompressedColumn<D,A> &column, int runs, int warmup, bool clearCache) {
-		if (clearCache == false)
-		{
-			for (int i = 0; i < warmup; ++i)
-			{
-				volatile auto decompressed = encoder->decompress(column);
-			}
-		}
-		auto runTimes = std::vector<size_t>(runs);
-		for (int i = 0; i < runs; ++i)
-		{
-			if (clearCache == true)
-			{
-				// TODO: call mem_flush. Do it like this?
-				// mem_flush(&column, sizeof(column));
-			}
-			auto start = std::chrono::system_clock::now();
-			volatile auto decompressed = encoder->decompress(column);
-			auto end = std::chrono::system_clock::now();
-			runTimes[i] = std::chrono::duration_cast<T>(end - start).count();
-		}
-		return runTimes;
+		auto wrapperFunction = [&column, encoder]() {
+			return encoder->decompress(column);
+		};
+		return benchmark<std::vector<D>>(wrapperFunction, runs, warmup, clearCache);
 	}
 };
 
