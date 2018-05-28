@@ -5,7 +5,7 @@
 #include "csv.h"
 #include "compressed.h"
 #include "dictionary.h"
-// #include "huffman.h"
+#include "huffman.h"
 // #include "cache.cpp"
 
 
@@ -82,6 +82,33 @@ void dictionaryBenchmark(const std::vector<std::string> &header, const std::vect
 	}
 }
 
+void huffmanBenchmark(const std::vector<std::string> &header, const std::vector<std::vector<std::string>> &table,
+						 int runs, int warmup=10, bool clearCache=false) {
+	HuffmanEncoder<std::string, std::vector<bool>> encoder;
+	ColumnBenchmark<std::chrono::nanoseconds> benchmark;
+
+	// Compress
+	std::vector<CompressedColumn<std::string, std::vector<bool>>> compressedTable;
+	for (int i = 0; i < table.size(); ++i)
+	{
+		compressedTable.push_back(encoder.compress(table[i]));
+	}
+
+	// // Benchmark columns
+	// std::vector<std::vector<size_t>> compressionRuntimes(table.size());
+	// std::vector<std::vector<size_t>> decompressionRuntimes(table.size());
+	// for (int i = 0; i < table.size(); ++i)
+	// {
+	// 	compressionRuntimes[i] = benchmark.compressBenchmark(&encoder, table[i], runs, warmup, clearCache);
+	// 	auto compressionAverage = std::accumulate(compressionRuntimes[i].begin(), compressionRuntimes[i].end(), 0.0)/compressionRuntimes[i].size();
+	// 	std::cout << "Dictionary Compression: Average Run Time for " << header[i] << ": " << compressionAverage << std::endl;
+		
+	// 	decompressionRuntimes[i] = benchmark.decompressBenchmark(&encoder, compressedTable[i], runs, warmup, clearCache);
+	// 	auto decompressionAverage = std::accumulate(decompressionRuntimes[i].begin(), decompressionRuntimes[i].end(), 0.0)/decompressionRuntimes[i].size();
+	// 	std::cout << "Dictionary Decompression: Average Run Time for " << header[i] << ": " << decompressionAverage << std::endl;
+	// }
+}
+
 
 int main(int argc, char* argv[]) {
 	std::string dataFile = "../data/order.short.tbl";
@@ -94,10 +121,10 @@ int main(int argc, char* argv[]) {
 	std::cout << "\rFinished loading in " << elapsed << " seconds" << std::endl;	
 
 	std::cout << "Benchmarking Dictionary Encoding" << std::endl;
-	dictionaryBenchmark(header, table, 100);
+	// dictionaryBenchmark(header, table, 100);
 
 	std::cout << "Benchmarking Huffman Encoding" << std::endl;
-	// huffmanBenchmark(header, table);
+	huffmanBenchmark(header, table, 100);
 
 
 	// gcc version 7.3.0 (MinGW-W64 project)

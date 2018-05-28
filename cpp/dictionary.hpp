@@ -1,6 +1,3 @@
-/**
-	Compresses a column using dictionary encoding and a std::set to store the dictionary.
-*/
 template <typename D, typename A>
 CompressedColumn<D, A> DictionaryEncoder<D, A>::compress(const std::vector<D> &column) {
 	std::set<D> dictionary;
