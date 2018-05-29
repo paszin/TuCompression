@@ -1,5 +1,3 @@
-#include "csv.h"
-
 std::vector<std::string> CSV::headerFromFile(std::string filePath) {
 	std::vector<std::string> header;
 	std::ifstream infileStream(filePath);
@@ -71,4 +69,53 @@ std::vector<std::vector<std::string>> CSV::toRowStore(std::string filePath, bool
 		table.push_back(splitRow);
 	}
 	return table;
+}
+
+template <typename T>
+void CSV::writeLine(std::vector<std::string> &header, std::vector<T> &line, std::string filename) {
+	std::ofstream file;
+	file.open(filename);
+	for (int i = 0; i < header.size(); ++i)
+	{
+		file << header[i];
+		if(i+1 < header.size()) {
+			file << ",";
+		}
+	}
+	file << "\n";
+	for (int i = 0; i < line.size(); ++i)
+	{
+		file << line[i];
+		if(i+1 < line.size()) {
+			file << ",";
+		}
+	}
+	file << "\n";
+	file.close();
+}
+
+template <typename T>
+void CSV::writeMultiLine(std::vector<std::string> &header, std::vector<std::vector<T>> &lines, std::string filename) {
+	std::ofstream file;
+	file.open(filename);
+	for (int i = 0; i < header.size(); ++i)
+	{
+		file << header[i];
+		if(i+1 < header.size()) {
+			file << ",";
+		}
+	}
+	file << "\n";
+	for (int i = 0; i < lines[0].size(); ++i)
+	{
+		for (int j = 0; j < lines.size(); ++j)
+		{
+			file << lines[j][i];
+			if(j+1 < lines.size()) {
+				file << ",";
+			}
+		}
+		file << "\n";
+	}
+	file.close();
 }
