@@ -1,4 +1,5 @@
 #include <vector>
+#include <unordered_map>
 #include <map>
 #include <set>
 #include <string>
@@ -7,6 +8,7 @@
 #include <functional>
 #include <utility>
 #include <queue>
+#include <cmath>
 #include "csv.h"
 
 
@@ -24,6 +26,7 @@ namespace Benchmark
 		auto runTimes = std::vector<size_t>(runs);
 		for (int i = 0; i < runs; ++i)
 		{
+			std::cout << "\rBenchmarking - Run: " << i;
 			if (clearCache == true)
 			{
 				// TODO: call mem_flush. Do it like this?
@@ -34,6 +37,7 @@ namespace Benchmark
 			auto end = std::chrono::system_clock::now();
 			runTimes[i] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 		}
+		std::cout << std::endl;
 		return runTimes;
 	}
 
@@ -54,8 +58,14 @@ namespace Benchmark
 
 namespace Dictionary
 {
+	/**
+		Compres:
+			- Uses a std::set to create a sorted list of uniques
+			- Converts the std::set to a std::unordered_map to perform O(1) lookups
+			- Returns a std::vector as dictionary for decompression
+	*/
 	template <typename D, typename A>
-	std::pair<std::set<D>, std::vector<A>> compress(const std::vector<D> &column) {
+	std::pair<std::vector<D>, std::vector<A>> compress(const std::vector<D> &column) {
 		std::set<D> dictionary;
 		std::vector<A> attributeVector(column.size());
 
@@ -63,29 +73,37 @@ namespace Dictionary
 			dictionary.emplace(cell);
 		}
 
+		std::unordered_map<D, A> lookup;
+		A j = 0;
+		for(auto key : dictionary) {
+			lookup[key] = j;
+			++j;
+		}
+
 		int i = 0;
 		for(auto cell : column) {
-			auto index = std::distance(dictionary.begin(), dictionary.find(cell));
+			auto index = lookup[cell];
 			attributeVector[i] = index;
-			i++;
+			++i;
 		}
-		return std::pair(dictionary, attributeVector);
+		return std::pair(std::vector<D>(dictionary.begin(), dictionary.end()), attributeVector);
 	}
 
 
 	template <typename D, typename A>
-	std::vector<D> decompress(std::pair<std::set<D>, std::vector<A>> &compressed) {
-		std::vector<D> decompressed(compressed.second.size());
+	std::vector<D> decompress(std::pair<std::vector<D>, std::vector<A>> &compressed) {
+		std::vector<D> decompressed;
+		decompressed.reserve(compressed.second.size());
 		for (int i = 0; i < compressed.second.size(); ++i)
 		{
-			decompressed[i] = *std::next(compressed.first.begin(), compressed.second[i]);
+			decompressed[i] = compressed.first[compressed.second[i]];
 		}
 		return decompressed;
 	}
 
 
 	template <typename D, typename A>
-	size_t compressedSize(std::pair<std::set<D>, std::vector<A>> &compressed) {
+	size_t compressedSize(std::pair<std::vector<D>, std::vector<A>> &compressed) {
 		size_t size = 0;
 		// Size of data structures
 		size += sizeof(compressed.first) + sizeof(compressed.second);
@@ -103,24 +121,28 @@ namespace Dictionary
 		for(auto cell : column) {
 			uniques.emplace(cell);
 		}
-		if(uniques.size() <= 2^8) {
+		if(uniques.size() <= std::pow(2, 8)) {
+			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^8" << std::endl;
 			auto compressedColumn = compress<D, uint8_t>(column);
-			std::function<std::pair<std::set<D>, std::vector<uint8_t>> ()> compressFunction = [&column]() {
+			std::function<std::pair<std::vector<D>, std::vector<uint8_t>> ()> compressFunction = [&column]() {
 				return compress<D, uint8_t>(column);
 			};
 			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
 				return decompress(compressedColumn);
 			};
+			std::cout << "Dictionary - Benchmarking Compression" << std::endl;
 			auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
+			std::cout << "Dictionary - Benchmarking Decompression" << std::endl;
 			auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
 			size_t cSize = compressedSize(compressedColumn);
 			size_t uSize = (sizeof(column) + sizeof(D) * column.size());
 			return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
 		}
-		else if (uniques.size() <= 2^16)
+		else if (uniques.size() <= std::pow(2, 16))
 		{
+			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^16" << std::endl;
 			auto compressedColumn = compress<D, uint16_t>(column);
-			std::function<std::pair<std::set<D>, std::vector<uint16_t>> ()> compressFunction = [&column]() {
+			std::function<std::pair<std::vector<D>, std::vector<uint16_t>> ()> compressFunction = [&column]() {
 				return compress<D, uint16_t>(column);
 			};
 			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
@@ -132,10 +154,11 @@ namespace Dictionary
 			size_t uSize = (sizeof(column) + sizeof(D) * column.size());
 			return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
 		}
-		else if (uniques.size() <= 2^32)
+		else if (uniques.size() <= std::pow(2, 32))
 		{
+			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^32" << std::endl;
 			auto compressedColumn = compress<D, uint32_t>(column);
-			std::function<std::pair<std::set<D>, std::vector<uint32_t>> ()> compressFunction = [&column]() {
+			std::function<std::pair<std::vector<D>, std::vector<uint32_t>> ()> compressFunction = [&column]() {
 				return compress<D, uint32_t>(column);
 			};
 			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
@@ -147,10 +170,11 @@ namespace Dictionary
 			size_t uSize = (sizeof(column) + sizeof(D) * column.size());
 			return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
 		}
-		else if (uniques.size() <= 2^64)
+		else if (uniques.size() <= std::pow(2, 64))
 		{
+			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^64" << std::endl;
 			auto compressedColumn = compress<D, uint64_t>(column);
-			std::function<std::pair<std::set<D>, std::vector<uint64_t>> ()> compressFunction = [&column]() {
+			std::function<std::pair<std::vector<D>, std::vector<uint64_t>> ()> compressFunction = [&column]() {
 				return compress<D, uint64_t>(column);
 			};
 			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
@@ -279,18 +303,19 @@ namespace Huffman
 		size += sizeof(compressed.first) + sizeof(compressed.second);
 		for(auto const& [k, v] : compressed.first) {
 			// Size of dictionary => D + std::vector + n * bool (1 Byte)
-			size += sizeof(k) + sizeof(v) + v.size();
+			size += sizeof(k) + sizeof(v) * v.size();
 		}
 		// Size of attribute vector values
 		for(auto attribute : compressed.second) {
 			// std::vector + n * bool (1 Byte)
-			size += sizeof(attribute) + attribute.size();
+			size += sizeof(attribute) * attribute.size();
 		}
 		return size;
 	}
 
 	template <typename D>
 	Benchmark::Result benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
+		std::cout << "Huffman - Compressing column" << std::endl;
 		auto compressedColumn = compress<D>(column);
 		std::function<std::pair<std::map<D, std::vector<bool>>, std::vector<std::vector<bool>>> ()> compressFunction = [&column]() {
 			return compress<D>(column);
@@ -298,7 +323,9 @@ namespace Huffman
 		std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
 			return decompress(compressedColumn);
 		};
+		std::cout << "Huffman - Benchmarking Compression" << std::endl;
 		auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
+		std::cout << "Huffman - Benchmarking Decompression" << std::endl;
 		auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
 		size_t cSize = compressedSize(compressedColumn);
 		size_t uSize = (sizeof(column) + sizeof(D) * column.size());
@@ -316,6 +343,7 @@ void fullDictionaryBenchmark(std::vector<std::vector<std::string>> &table, std::
 	std::vector<Benchmark::Result> results;
 	for (int i = 0; i < header.size(); ++i)
 	{
+		std::cout << "Dictionary - Benchmarking column: " << header[i] << std::endl;
 		auto benchmarkResult = Dictionary::benchmark<std::string>(table[i], runs, warmup, clearCache);
 		results.push_back(benchmarkResult);
 	}
@@ -350,6 +378,7 @@ void fullHuffmanBenchmark(std::vector<std::vector<std::string>> &table, std::vec
 	std::vector<Benchmark::Result> results;
 	for (int i = 0; i < header.size(); ++i)
 	{
+		std::cout << "Huffman - Benchmarking column: " << header[i] << std::endl;
 		auto benchmarkResult = Huffman::benchmark<std::string>(table[i], runs, warmup, clearCache);
 		results.push_back(benchmarkResult);
 	}
@@ -380,14 +409,14 @@ int main(int argc, char* argv[]) {
 	int warmup = 10;
 	bool clearCache = false;
 
-	std::string dataFile = "../data/order.1000.tbl";
+	std::string dataFile = "../data/order.tbl";
 	auto header = CSV::headerFromFile(dataFile);
-	std::cout << "Loading table";
+	std::cout << "Loading table" << std::endl;
 	auto start = std::chrono::system_clock::now();
 	auto table = CSV::toColumnStore(dataFile);
 	auto end = std::chrono::system_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-	std::cout << "\rFinished loading in " << elapsed << " nanoseconds" << std::endl;	
+	std::cout << "Finished loading in " << elapsed << " nanoseconds" << std::endl;
 	std::cout << "Loaded " << table[0].size() << " lines" << std::endl;
 
 	std::string cRatioFile = "compression_ratios.csv";

@@ -1,3 +1,6 @@
+#include <algorithm>
+
+
 std::vector<std::string> CSV::headerFromFile(std::string filePath) {
 	std::vector<std::string> header;
 	std::ifstream infileStream(filePath);
@@ -31,18 +34,21 @@ std::vector<std::vector<std::string>> CSV::toColumnStore(std::string filePath, b
 	std::size_t columns = CSV::headerFromFile(filePath).size();
 	std::vector<std::vector<std::string>> table(columns);
 
+	size_t rowCount = 0;
 	while(std::getline(infileStream, row, rowSeparator)) {
 		if(skipHeader == true) {
 			skipHeader = false;
 			continue;
 		}
 		std::stringstream rowStream(row);
-		int column = 0;
+		size_t column = 0;
 		while(std::getline(rowStream, cell, cellSeparator)) {
 			table[column].push_back(cell);
-			column++;
+			++column;
 		}
+		++rowCount;
 	}
+	// std::cout << std::endl;
 	return table;
 }
 
