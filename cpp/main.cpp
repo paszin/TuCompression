@@ -9,6 +9,8 @@
 #include <utility>
 #include <queue>
 #include <cmath>
+#include <cassert>
+#include <bitset>
 #include "csv.h"
 
 
@@ -20,13 +22,16 @@ namespace Benchmark
 		{
 			for (int i = 0; i < warmup; ++i)
 			{
+				std::cout << "\rBenchmarking - Warmup: " << i << std::flush;
 				volatile auto compressed = wrapperFunction();
 			}
+			std::cout << std::endl;
 		}
 		auto runTimes = std::vector<size_t>(runs);
+		std::cout << "Beginning benchmark" << std::endl;
 		for (int i = 0; i < runs; ++i)
 		{
-			std::cout << "\rBenchmarking - Run: " << i;
+			std::cout << "\rBenchmarking - Run: " << i << std::flush;
 			if (clearCache == true)
 			{
 				// TODO: call mem_flush. Do it like this?
@@ -94,9 +99,8 @@ namespace Dictionary
 	std::vector<D> decompress(std::pair<std::vector<D>, std::vector<A>> &compressed) {
 		std::vector<D> decompressed;
 		decompressed.reserve(compressed.second.size());
-		for (int i = 0; i < compressed.second.size(); ++i)
-		{
-			decompressed[i] = compressed.first[compressed.second[i]];
+		for(auto cell : compressed.second) {
+			decompressed.push_back(compressed.first[cell]);
 		}
 		return decompressed;
 	}
@@ -115,6 +119,26 @@ namespace Dictionary
 	}
 
 
+	template <typename D, typename C>
+	Benchmark::Result benchmark_with_dtype(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
+		auto compressedColumn = compress<D, C>(column);
+		assert(column == decompress(compressedColumn));
+		std::function<std::pair<std::vector<D>, std::vector<C>> ()> compressFunction = [&column]() {
+			return compress<D, C>(column);
+		};
+		std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
+			return decompress(compressedColumn);
+		};
+		std::cout << "Dictionary - Compress Benchmark" << std::endl;
+		auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
+		std::cout << "Dictionary - Decompress Benchmark" << std::endl;
+		auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
+		size_t cSize = compressedSize(compressedColumn);
+		size_t uSize = (sizeof(column) + sizeof(D) * column.size());
+		return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
+	}
+
+
 	template <typename D>
 	Benchmark::Result benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
 		std::set<D> uniques;
@@ -123,68 +147,22 @@ namespace Dictionary
 		}
 		if(uniques.size() <= std::pow(2, 8)) {
 			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^8" << std::endl;
-			auto compressedColumn = compress<D, uint8_t>(column);
-			std::function<std::pair<std::vector<D>, std::vector<uint8_t>> ()> compressFunction = [&column]() {
-				return compress<D, uint8_t>(column);
-			};
-			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
-				return decompress(compressedColumn);
-			};
-			std::cout << "Dictionary - Benchmarking Compression" << std::endl;
-			auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
-			std::cout << "Dictionary - Benchmarking Decompression" << std::endl;
-			auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
-			size_t cSize = compressedSize(compressedColumn);
-			size_t uSize = (sizeof(column) + sizeof(D) * column.size());
-			return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
+			return benchmark_with_dtype<D, uint8_t>(column, runs, warmup, clearCache);
 		}
 		else if (uniques.size() <= std::pow(2, 16))
 		{
 			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^16" << std::endl;
-			auto compressedColumn = compress<D, uint16_t>(column);
-			std::function<std::pair<std::vector<D>, std::vector<uint16_t>> ()> compressFunction = [&column]() {
-				return compress<D, uint16_t>(column);
-			};
-			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
-				return decompress(compressedColumn);
-			};
-			auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
-			auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
-			size_t cSize = compressedSize(compressedColumn);
-			size_t uSize = (sizeof(column) + sizeof(D) * column.size());
-			return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
+			return benchmark_with_dtype<D, uint16_t>(column, runs, warmup, clearCache);
 		}
 		else if (uniques.size() <= std::pow(2, 32))
 		{
 			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^32" << std::endl;
-			auto compressedColumn = compress<D, uint32_t>(column);
-			std::function<std::pair<std::vector<D>, std::vector<uint32_t>> ()> compressFunction = [&column]() {
-				return compress<D, uint32_t>(column);
-			};
-			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
-				return decompress(compressedColumn);
-			};
-			auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
-			auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
-			size_t cSize = compressedSize(compressedColumn);
-			size_t uSize = (sizeof(column) + sizeof(D) * column.size());
-			return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
+			return benchmark_with_dtype<D, uint32_t>(column, runs, warmup, clearCache);
 		}
 		else if (uniques.size() <= std::pow(2, 64))
 		{
 			std::cout << "Dictionary - Compressing column - " << uniques.size() << " = 2^64" << std::endl;
-			auto compressedColumn = compress<D, uint64_t>(column);
-			std::function<std::pair<std::vector<D>, std::vector<uint64_t>> ()> compressFunction = [&column]() {
-				return compress<D, uint64_t>(column);
-			};
-			std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
-				return decompress(compressedColumn);
-			};
-			auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
-			auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
-			size_t cSize = compressedSize(compressedColumn);
-			size_t uSize = (sizeof(column) + sizeof(D) * column.size());
-			return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
+			return benchmark_with_dtype<D, uint64_t>(column, runs, warmup, clearCache);
 		}
 		else {
 			std::cout << "Cannot address more than 2^64 uniques" << std::endl;
@@ -223,34 +201,33 @@ namespace Huffman
 		LeafHuffmanNode(size_t frequency, D data) : IHuffmanNode(frequency), data(data) { }
 	};
 
-	template <typename D>
-	void buildCodes(const IHuffmanNode* node, std::vector<bool> &prefix, std::map<D, std::vector<bool>> &dictionary) {
+	template <typename D, std::size_t B>
+	void buildCodes(const IHuffmanNode* node, std::bitset<B> &prefix, std::unordered_map<D, std::bitset<B>> &dictionary, size_t depth=0) {
 	    if(const LeafHuffmanNode<D>* lf = dynamic_cast<const LeafHuffmanNode<D>*>(node))
 	    {
 	        dictionary[lf->data] = prefix;
 	    }
 	    else if (const InternalHuffmanNode<D>* in = dynamic_cast<const InternalHuffmanNode<D>*>(node))
 	    {
-	    	std::vector<bool> left = prefix;
-	    	left.push_back(false);
-	    	buildCodes<D>(in->left, left, dictionary);
-	    	std::vector<bool> right = prefix;
-	    	right.push_back(true);
-	    	buildCodes<D>(in->right, right, dictionary);
+	    	std::bitset<B> left = prefix;
+	    	buildCodes<D>(in->left, left, dictionary, ++depth);
+	    	std::bitset<B> right = prefix;
+	    	right.flip(right.size() - 1 - depth);
+	    	buildCodes<D>(in->right, right, dictionary, ++depth);
 	    }
 	}
 
-	template <typename D>
-	std::pair<std::map<D, std::vector<bool>>, std::vector<std::vector<bool>>> compress(const std::vector<D> &column) {
-		std::map<D, std::vector<bool>> dictionary;
-		std::vector<std::vector<bool>> attributeVector(column.size());
+	template <typename D, std::size_t B>
+	std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> compress(const std::vector<D> &column) {
+		std::unordered_map<D, std::bitset<B>> dictionary;
+		std::vector<std::bitset<B>> attributeVector(column.size());
 
 		auto compare = [](const IHuffmanNode *left, const IHuffmanNode *right){
 			return left->frequency > right->frequency;
 		};
 
 		// Calculate unique frequencies
-		std::map<D, size_t> frequencies;
+		std::unordered_map<D, size_t> frequencies;
 		for (auto cell : column)
 		{
 			++frequencies[cell];
@@ -273,7 +250,7 @@ namespace Huffman
 
 			minHeap.emplace(new InternalHuffmanNode<D>(left, right));
 		}
-		std::vector<bool> prefix;
+		std::bitset<B> prefix;
 		buildCodes<D>(minHeap.top(), prefix, dictionary);
 		for (int i = 0; i < column.size(); ++i)
 		{
@@ -282,10 +259,10 @@ namespace Huffman
 		return std::pair(dictionary, attributeVector);
 	}
 
-	template <typename D>
-	std::vector<D> decompress(std::pair<std::map<D, std::vector<bool>>, std::vector<std::vector<bool>>> &compressed) {
+	template <typename D, std::size_t B>
+	std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
 		std::vector<D> decompressed(compressed.second.size());
-		std::map<std::vector<bool>, D> reverseDictionary;
+		std::unordered_map<std::bitset<B>, D> reverseDictionary;
 		for(auto const& [k, v] : compressed.first) {
 			reverseDictionary[v] = k;
 		}
@@ -296,8 +273,8 @@ namespace Huffman
 		return decompressed;
 	}
 
-	template <typename D>
-	size_t compressedSize(std::pair<std::map<D, std::vector<bool>>, std::vector<std::vector<bool>>> &compressed) {
+	template <typename D, std::size_t B>
+	size_t compressedSize(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
 		size_t size = 0;
 		// Size of data structures => map + std::vector
 		size += sizeof(compressed.first) + sizeof(compressed.second);
@@ -316,9 +293,11 @@ namespace Huffman
 	template <typename D>
 	Benchmark::Result benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
 		std::cout << "Huffman - Compressing column" << std::endl;
-		auto compressedColumn = compress<D>(column);
-		std::function<std::pair<std::map<D, std::vector<bool>>, std::vector<std::vector<bool>>> ()> compressFunction = [&column]() {
-			return compress<D>(column);
+		auto compressedColumn = compress<D, 64>(column);
+		std::cout << "Huffman - Decompressing column" << std::endl;
+		assert(column == decompress(compressedColumn));
+		std::function<std::pair<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>> ()> compressFunction = [&column]() {
+			return compress<D, 64>(column);
 		};
 		std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
 			return decompress(compressedColumn);
@@ -343,11 +322,12 @@ void fullDictionaryBenchmark(std::vector<std::vector<std::string>> &table, std::
 	std::vector<Benchmark::Result> results;
 	for (int i = 0; i < header.size(); ++i)
 	{
-		std::cout << "Dictionary - Benchmarking column: " << header[i] << std::endl;
+		std::cout << "Dictionary - Benchmarking column (" << i+1 << "/" << header.size() << "): " << header[i] << std::endl;
 		auto benchmarkResult = Dictionary::benchmark<std::string>(table[i], runs, warmup, clearCache);
 		results.push_back(benchmarkResult);
 	}
 
+	std::cout << "Dictionary - Finished" << std::endl;
 	std::vector<double> cRatios;
 	std::vector<size_t> cSizes;
 	std::vector<size_t> uSizes;
@@ -378,11 +358,12 @@ void fullHuffmanBenchmark(std::vector<std::vector<std::string>> &table, std::vec
 	std::vector<Benchmark::Result> results;
 	for (int i = 0; i < header.size(); ++i)
 	{
-		std::cout << "Huffman - Benchmarking column: " << header[i] << std::endl;
+		std::cout << "Huffman - Benchmarking column (" << i+1 << "/" << header.size() << "): " << header[i] << std::endl;
 		auto benchmarkResult = Huffman::benchmark<std::string>(table[i], runs, warmup, clearCache);
 		results.push_back(benchmarkResult);
 	}
 
+	std::cout << "Huffman - Finished" << std::endl;
 	std::vector<double> cRatios;
 	std::vector<size_t> cSizes;
 	std::vector<size_t> uSizes;
@@ -405,10 +386,38 @@ void fullHuffmanBenchmark(std::vector<std::vector<std::string>> &table, std::vec
 
 
 int main(int argc, char* argv[]) {
-	int runs = 100;
-	int warmup = 10;
+	int runs = 10;
+	int warmup = 1;
 	bool clearCache = false;
 
+	// ------------------- Parse Flags -------------- //
+	std::vector<std::string> args;
+	for (int i = 0; i < argc; ++i)
+	{
+		args.push_back(argv[i]);
+	}
+	bool dictionary = false;
+	bool huffman = false;
+	if(argc < 2) {
+		dictionary = true;
+		huffman = true;
+	}
+	else {
+		for(auto arg : args) {
+			if (arg == "-dictionary") {
+				dictionary = true;
+			}
+			else if(arg == "-huffman") {
+				huffman = true;
+			}
+			else {
+				std::cerr << arg << " is an unrecognised flag.\nThe following flags are allowed:\n\t-dictionary\n\t-huffman\n\tor no flag to run all" << std::endl;
+				return 1;
+			}
+		}
+	}
+
+	// ------------------- Load Table -------------- //
 	std::string dataFile = "../data/order.tbl";
 	auto header = CSV::headerFromFile(dataFile);
 	std::cout << "Loading table" << std::endl;
@@ -427,15 +436,18 @@ int main(int argc, char* argv[]) {
 
 
 	// ------------------- Dictionary -------------- //
+	if(dictionary) {
+		fullDictionaryBenchmark(table, header, runs, warmup, clearCache, cRatioFile, cSizeFile, uSizeFile, cTimesFile, dcTimesFile);
+	}
+	if(huffman) {
+		fullHuffmanBenchmark(table, header, runs, warmup, clearCache, cRatioFile, cSizeFile, uSizeFile, cTimesFile, dcTimesFile);
+	}
 
-	fullDictionaryBenchmark(table, header, runs, warmup, clearCache, cRatioFile, cSizeFile, uSizeFile, cTimesFile, dcTimesFile);
+	// gcc version 7.3.0
 
-	// ------------------- Huffman -------------- //
-
-	fullHuffmanBenchmark(table, header, runs, warmup, clearCache, cRatioFile, cSizeFile, uSizeFile, cTimesFile, dcTimesFile);
-
-
-	// gcc version 7.3.0 (MinGW-W64 project)
-	// Command to compile code (Windows syntax!):
-	// gcc .\main.cpp -lstdc++ -o main -std=c++1z; .\main.exe
+	// With optmizations
+	// gcc main.cpp -lstdc++ -std=c++1z -O2 -o main
+	
+	// Without optimizations (we have to link math with -lm)
+	// gcc main.cpp -lstdc++ -std=c++1z -lm -o main
 }
