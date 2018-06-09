@@ -15,9 +15,6 @@
 #include "benchmark.cpp"
 #include "huffman.cpp"
 
-// Compile: gcc huffman_test.cpp -lstdc++ -O2 -std=c++1z -o htest
-// Run: ./htest
-
 int main(int argc, char const *argv[])
 {
 	{

@@ -37,6 +37,8 @@ struct Result
 	const size_t compressedSize;
 	const size_t uncompressedSize;
 	const double compressionRatio;
+	std::vector<std::vector<size_t>> aggregateRuntimes;
+	std::vector<std::string> aggregateNames;
 
 	Result(std::vector<size_t> cT, std::vector<size_t> dT, size_t cSize, size_t uSize) :
 		compressionTimes(cT), decompressionTimes(dT), compressedSize(cSize), uncompressedSize(uSize),
