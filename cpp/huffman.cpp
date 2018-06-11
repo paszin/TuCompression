@@ -45,6 +45,16 @@ void buildCodes(const IHuffmanNode* node, std::bitset<B> &prefix, std::unordered
 	}
 }
 
+int getCodeLength(std::bitset<64> bs) {
+	//returns index of last 1 in the bitset
+	for (std::size_t i = 0; i < bs.size(); ++i) {
+		if (bs[i] == 1) {
+			return 64 - i;
+		}
+	}
+	return 0;
+}
+
 template <typename D>
 size_t tree_depth(const IHuffmanNode* node, size_t depth = 0) {
 	if (const InternalHuffmanNode<D>* in = dynamic_cast<const InternalHuffmanNode<D>*>(node))
@@ -95,12 +105,33 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 	std::cout << "Depth: " << heap_depth << std::endl;
 	std::bitset<B> prefix;
 	buildCodes<D>(minHeap.top(), prefix, dictionary);
+	int attributeVectorIndex = 0;
+	int bitsetLength = 0;
+	int codeLength;
 	for (int i = 0; i < column.size(); ++i)
 	{
-		attributeVector[i] = dictionary[column[i]];
+		std::bitset<B> code = dictionary[column[i]];
+		codeLength = getCodeLength(code);
+		if (bitsetLength + getCodeLength(code) > 64) {
+			std::cout << "attribute vector (full): " << attributeVector[attributeVectorIndex].to_string() << '\n';
+			attributeVectorIndex++;
+			bitsetLength = 0;
+		}
+		//std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
+		//std::cout << "code: " << code << '\n';
+		code >>= bitsetLength; //shift
+		//std::cout << "code after shift: " << code << '\n';
+		attributeVector[attributeVectorIndex] |= code; //bitwise or
+		bitsetLength += codeLength;
+		//std::cout << i << ": " << column[i] << ':' << dictionary[column[i]] << ": " <<  getCodeLength(code) << std::endl;
 	}
+	std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
+
+
 	return std::pair(dictionary, attributeVector);
 }
+
+
 
 template <typename D, std::size_t B>
 std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
