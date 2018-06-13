@@ -131,6 +131,52 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 	return std::pair(dictionary, attributeVector);
 }
 
+template <typename T> 
+struct hnode
+{
+  T value;
+  hnode *zero;
+  hnode *one;
+};
+
+
+template <typename D, std::size_t B>
+std::vector<D> decompress2(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
+	//second approach for the bucket strategy
+	std::vector<D> decompressed; //IMPROVEMENT: use number of rows
+	hnode<D> tree; 
+	// generate a binary tree
+	for (auto const& [k, v] : compressed.first) {
+		hnode<D> leaf = tree;
+		std::cout << "create tree" << '\n';
+		for (auto const& b : v) {
+			std::cout << "" << b << '\n';
+			if (b == 0) {
+				leaf = leaf.zero;
+			} else {
+				leaf = leaf.one;
+			}
+		}
+		leaf.value = k;
+	}
+	int di = 0; // decompressed index
+	hnode<D> leaf = tree;
+	for (int i = 0; compressed.second.size(); ++i) {
+		for (auto const& b : compressed.second[i]) { //bit in bitset
+			if (b == 0) {
+				leaf = leaf.zero;
+			} else {
+				leaf = leaf.one;
+			}
+			if (leaf.value) {
+			decompressed[di] = leaf.value;
+			leaf = tree; //start again
+			}
+		}
+	}
+	return decompressed;
+}
+
 
 
 template <typename D, std::size_t B>

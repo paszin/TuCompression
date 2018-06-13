@@ -34,7 +34,7 @@ int main(int argc, char const *argv[])
 		auto compressedColumn = Huffman::compress<int, 64>(column);
 		//std::cout << "compressed: " << compressedColumn << std::endl;
 		{
-			auto decompressed = Huffman::decompress(compressedColumn);
+			auto decompressed = Huffman::decompress2(compressedColumn);
 			//assert(column == decompressed);
 		}
 	}
