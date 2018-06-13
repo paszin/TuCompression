@@ -12,6 +12,9 @@
 #include <cassert>
 #include <bitset>
 #include <algorithm>
+#include <stdexcept>
+#include <iomanip>
+#include <sstream>
 #include "benchmark.cpp"
 #include "dictionary.cpp"
 
@@ -27,8 +30,8 @@ int main(int argc, char const *argv[])
 		auto func = [predicate](std::pair<std::vector<int>, std::vector<uint8_t>> &col) -> std::vector<int> {
 			return Dictionary::where_copy_op(col, predicate);
 		};
-
-		auto runtimes = Dictionary::benchmark_op_with_dtype<int, uint8_t, std::vector<int>>(column, 1, 1, false, func);
+		auto compressedColumn = Dictionary::compress<int, uint8_t>(column);
+		auto runtimes = Dictionary::benchmark_op_with_dtype<int, uint8_t, std::vector<int>>(compressedColumn, 1, 1, false, func);
 		for (auto r : runtimes) {
 			std::cout << r << std::endl;
 		}
@@ -61,7 +64,7 @@ int main(int argc, char const *argv[])
 			std::function<bool (int)> predicate = [](int i) {
 				return i < 6;
 			};
-			auto pred_sum = Dictionary::sum_where_op<int, uint8_t>(compressedColumn, predicate);
+			auto pred_sum = Dictionary::sum_where_copy_op<int, uint8_t>(compressedColumn, predicate);
 			std::cout << "Sum for <6: " << pred_sum << std::endl;
 			assert(pred_sum == 16);
 		}
@@ -69,7 +72,7 @@ int main(int argc, char const *argv[])
 			std::function<bool (int)> predicate = [](int i) {
 				return i > 5;
 			};
-			auto pred_sum = Dictionary::sum_where_op<int, uint8_t>(compressedColumn, predicate);
+			auto pred_sum = Dictionary::sum_where_copy_op<int, uint8_t>(compressedColumn, predicate);
 			std::cout << "Sum for >5: " << pred_sum << std::endl;
 			assert(pred_sum == 30);
 		}
@@ -144,6 +147,41 @@ int main(int argc, char const *argv[])
 			assert(expected == found);
 		}
 	}
-
+	std::cout << "#### TEST WITH STD::STRING + DATES ####" << std::endl;
+	{
+		std::vector<std::string> column = {"1996-01-02", "1995-01-03", "1995-01-04", "1995-01-05"};
+		std::vector<std::time_t> convertedColumn;
+		auto transform_fn = [](const std::string & str) {
+			std::tm t = {};
+			std::istringstream ss(str);
+			ss >> std::get_time(&t, "%Y-%m-%d");
+			if (ss.fail()) {
+				throw std::invalid_argument("Cannot convert " + str + " to time");
+			}
+			return std::mktime(&t);
+		};
+		std::transform(column.begin(), column.end(), std::back_inserter(convertedColumn), transform_fn);
+		auto compressedColumn = Dictionary::compress<std::time_t, uint8_t>(convertedColumn);
+		// 1996-01-02
+		std::tm date;
+		date.tm_mon = 0;
+		date.tm_sec = 0;
+		date.tm_min = 0;
+		date.tm_hour = 0;
+		date.tm_wday = 0;
+		date.tm_yday = 0;
+		date.tm_year = 96;
+		date.tm_mday = 2;
+		std::function<bool (std::time_t)> predicate = [&date](std::time_t i) {
+			// 1996-01-02
+			return i < std::mktime(&date);
+		};
+		auto where = Dictionary::where_view_op(compressedColumn, predicate);
+		for (auto t : convertedColumn) {
+			std::cout << t << std::endl;
+		}
+		std::cout << where.size() << std::endl;
+		// assert(where.size() == 3);
+	}
 	return 0;
 }

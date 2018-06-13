@@ -30,18 +30,24 @@ std::vector<size_t> benchmark(std::function<C ()> wrapperFunction, int runs, int
 	return runTimes;
 }
 
-struct Result
+struct CompressionResult
 {
-	const std::vector<size_t> compressionTimes;
-	const std::vector<size_t> decompressionTimes;
-	const size_t compressedSize;
-	const size_t uncompressedSize;
-	const double compressionRatio;
-	std::vector<std::vector<size_t>> aggregateRuntimes;
-	std::vector<std::string> aggregateNames;
+	std::vector<size_t> compressionTimes;
+	std::vector<size_t> decompressionTimes;
+	size_t compressedSize;
+	size_t uncompressedSize;
+	double compressionRatio;
 
-	Result(std::vector<size_t> cT, std::vector<size_t> dT, size_t cSize, size_t uSize) :
+	CompressionResult() {}
+
+	CompressionResult(std::vector<size_t> cT, std::vector<size_t> dT, size_t cSize, size_t uSize) :
 		compressionTimes(cT), decompressionTimes(dT), compressedSize(cSize), uncompressedSize(uSize),
 		compressionRatio((double)uSize / (double)cSize) {}
+};
+
+struct OpResult
+{
+	std::vector<std::vector<size_t>> aggregateRuntimes;
+	std::vector<std::string> aggregateNames;
 };
 } // end namespace Benchmark
