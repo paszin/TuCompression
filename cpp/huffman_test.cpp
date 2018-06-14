@@ -28,7 +28,7 @@ int main(int argc, char const *argv[])
 
 		for(size_t i = 0; i < 40; i++)
 		{
-			//column.push_back(i);
+		//	column.push_back(i);
 		}
 
 		std::vector<int> expected = {6, 7, 8, 9};
@@ -36,7 +36,7 @@ int main(int argc, char const *argv[])
 		//std::cout << "compressed: " << compressedColumn << std::endl;
 		{
 			auto decompressed = Huffman::decompress(compressedColumn);
-			//assert(column == decompressed);
+			assert(column == decompressed);
 		}
 	}
 	{

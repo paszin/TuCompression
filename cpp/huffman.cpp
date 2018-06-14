@@ -72,7 +72,7 @@ size_t tree_depth(const IHuffmanNode* node, size_t depth = 0) {
 template <typename D, std::size_t B>
 std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> compress(const std::vector<D> &column) {
 	std::unordered_map<D, std::bitset<B>> dictionary;
-	std::vector<std::bitset<B>> attributeVector(column.size());
+	std::vector<std::bitset<B>> attributeVector;
 
 	auto compare = [](const IHuffmanNode * left, const IHuffmanNode * right) {
 		return left->frequency > right->frequency;
@@ -103,7 +103,7 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 		minHeap.emplace(new InternalHuffmanNode<D>(left, right));
 	}
 	auto heap_depth = tree_depth<D>(minHeap.top());
-	std::cout << "Depth: " << heap_depth << std::endl;
+	//std::cout << "Depth: " << heap_depth << std::endl;
 	std::bitset<B> prefix;
 	buildCodes<D>(minHeap.top(), prefix, dictionary);
 	int attributeVectorIndex = 0;
@@ -113,29 +113,25 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 	{
 		std::bitset<B> code = dictionary[column[i]];
 		codeLength = getCodeLength(code);
-		std::cout << "code: " << code << "##" << getCodeLength(code) <<  '\n';
+		//std::cout << "code: " << code << "##" << getCodeLength(code) <<  '\n';
 		if (bitsetLength + getCodeLength(code) > 64) {
-			std::cout << "attribute vector (full): " << attributeVector[attributeVectorIndex].to_string() << '\n';
+			//std::cout << "attribute vector (full): " << attributeVector[attributeVectorIndex].to_string() << '\n';
 			attributeVectorIndex++;
 			bitsetLength = 0;
 		}
 		//std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
-		
+
 		code >>= bitsetLength; //shift
 		//std::cout << "code after shift: " << code << '\n';
 		attributeVector[attributeVectorIndex] |= code; //bitwise or
 		bitsetLength += codeLength;
 		//std::cout << i << ": " << column[i] << ':' << dictionary[column[i]] << ": " <<  getCodeLength(code) << std::endl;
 	}
-	std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
+	// std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
 
 
 	return std::pair(dictionary, attributeVector);
 }
-
-
-
-
 
 
 template <typename D, std::size_t B>
@@ -147,10 +143,14 @@ std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::
     }
     std::vector<D> decompressed;
     for (auto bitset : compressed.second) {
-        std::bitset<B> mask;
+        //when attributeVector gets column.size as initial size
+		// if (bitset.none()) { //only 0
+		// 	break; //FIXME: more or less performance workaround, compressed.second contains empty bitsets in the end
+		//}
+		std::bitset<B> mask;
         size_t shift = 0;
-        std::cout << "Bitset: " << bitset << std::endl;
-        for (size_t i = 0; i < bitset.size(); ++i) {
+        //std::cout << "Bitset: " << bitset << std::endl;
+		for (size_t i = 0; i < bitset.size(); ++i) {
 
 			mask.set(63-i, 1);
             //mask.flip(i);
@@ -159,18 +159,17 @@ std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::
             if (search.none() && !bitset.none()) {
                 continue;
             }
-            std::cout << "Mask:\t\t" << mask << std::endl;
-            std::cout << "Detected:\t" << (bitset & mask) << std::endl;
-            std::cout << "Searching: " << shift << "\t" << search << std::endl;
+            // std::cout << "Mask:\t\t" << mask << std::endl;
+            // std::cout << "Detected:\t" << (bitset & mask) << std::endl;
+            // std::cout << "Searching: " << shift << "\t" << search << std::endl;
             if (reverseDictionary.find(search) != reverseDictionary.end()) {
-                std::cout << "Found: " << reverseDictionary[search] << std::endl;
+                // std::cout << "Found: " << reverseDictionary[search] << std::endl;
                 shift = i + 1;
                 mask.reset();
                 decompressed.push_back(reverseDictionary[search]);
             }
-            std::cout << std::endl;
+            // std::cout << std::endl;
         }
-        break;
     }
     return decompressed;
 }
