@@ -133,56 +133,52 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 	return std::pair(dictionary, attributeVector);
 }
 
-template <typename T> 
-struct hnode
-{
-  T value;
-  hnode *zero;
-  hnode *one;
-};
 
 
-template <typename D, std::size_t B>
-std::vector<D> decompress2(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
-	//second approach for the bucket strategy
-	std::vector<D> decompressed; //IMPROVEMENT: use number of rows
-	hnode<D> tree; 
-	// generate a binary tree
-	for (auto const& [k, v] : compressed.first) {
-		hnode<D> leaf = tree;
-		std::cout << "create tree" << '\n';
-		for (auto const& b : v) {
-			std::cout << "" << b << '\n';
-			if (b == 0) {
-				leaf = leaf.zero;
-			} else {
-				leaf = leaf.one;
-			}
-		}
-		leaf.value = k;
-	}
-	int di = 0; // decompressed index
-	hnode<D> leaf = tree;
-	for (int i = 0; compressed.second.size(); ++i) {
-		for (auto const& b : compressed.second[i]) { //bit in bitset
-			if (b == 0) {
-				leaf = leaf.zero;
-			} else {
-				leaf = leaf.one;
-			}
-			if (leaf.value) {
-			decompressed[di] = leaf.value;
-			leaf = tree; //start again
-			}
-		}
-	}
-	return decompressed;
-}
 
 
 
 template <typename D, std::size_t B>
 std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
+    // std::vector<D> decompressed(compressed.second.size());
+    std::unordered_map<std::bitset<B>, D> reverseDictionary;
+    for (auto const& [k, v] : compressed.first) {
+        reverseDictionary[v] = k;
+    }
+    std::vector<D> decompressed;
+    for (auto bitset : compressed.second) {
+        std::bitset<B> mask;
+        size_t shift = 0;
+        std::cout << "Bitset: " << bitset << std::endl;
+        for (size_t i = 0; i < bitset.size(); ++i) {
+
+			mask.set(63-i, 1);
+            //mask.flip(i);
+            // std::cout << "Shift: " << shift << std::endl;
+            auto search = ((bitset & mask) << shift);
+            if (search.none() && !bitset.none()) {
+                continue;
+            }
+            std::cout << "Mask:\t\t" << mask << std::endl;
+            std::cout << "Detected:\t" << (bitset & mask) << std::endl;
+            std::cout << "Searching: " << shift << "\t" << search << std::endl;
+            if (reverseDictionary.find(search) != reverseDictionary.end()) {
+                std::cout << "Found: " << reverseDictionary[search] << std::endl;
+                shift = i + 1;
+                mask.reset();
+                decompressed.push_back(reverseDictionary[search]);
+            }
+            std::cout << std::endl;
+        }
+        break;
+    }
+    return decompressed;
+}
+
+
+
+template <typename D, std::size_t B>
+std::vector<D> decompressSimple(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
 	std::vector<D> decompressed(compressed.second.size());
 	std::unordered_map<std::bitset<B>, D> reverseDictionary;
 	for (auto const& [k, v] : compressed.first) {
