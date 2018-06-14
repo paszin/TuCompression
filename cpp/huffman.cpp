@@ -39,18 +39,19 @@ void buildCodes(const IHuffmanNode* node, std::bitset<B> &prefix, std::unordered
 	else if (const InternalHuffmanNode<D>* in = dynamic_cast<const InternalHuffmanNode<D>*>(node))
 	{
 		std::bitset<B> left = prefix;
-		buildCodes<D>(in->left, left, dictionary, depth+1);
+		buildCodes<D>(in->left, left, dictionary, depth + 1);
 		std::bitset<B> right = prefix;
 		right.flip(right.size() - 1 - depth);
-		buildCodes<D>(in->right, right, dictionary, depth+1);
+		buildCodes<D>(in->right, right, dictionary, depth + 1);
 	}
 }
 
-int getCodeLength(std::bitset<64> bs) {
+template <std::size_t B>
+int getCodeLength(std::bitset<B> bs) {
 	//returns index of last 1 in the bitset
 	for (std::size_t i = 0; i < bs.size(); ++i) {
 		if (bs[i] == 1) {
-			return 64 - i;
+			return B - i;
 		}
 	}
 	return 0;
@@ -71,9 +72,6 @@ size_t tree_depth(const IHuffmanNode* node, size_t depth = 0) {
 
 template <typename D, std::size_t B>
 std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> compress(const std::vector<D> &column) {
-	std::unordered_map<D, std::bitset<B>> dictionary;
-	std::vector<std::bitset<B>> attributeVector;
-
 	auto compare = [](const IHuffmanNode * left, const IHuffmanNode * right) {
 		return left->frequency > right->frequency;
 	};
@@ -102,76 +100,65 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 
 		minHeap.emplace(new InternalHuffmanNode<D>(left, right));
 	}
-	auto heap_depth = tree_depth<D>(minHeap.top());
-	//std::cout << "Depth: " << heap_depth << std::endl;
+
+	// Build dictionary
+	std::unordered_map<D, std::bitset<B>> dictionary;
 	std::bitset<B> prefix;
 	buildCodes<D>(minHeap.top(), prefix, dictionary);
-	int attributeVectorIndex = 0;
+
+	// Compress Attribute Vector
+	std::vector<std::bitset<B>> attributeVector;
 	int bitsetLength = 0;
 	int codeLength;
+	std::bitset<B> currentBitset;
+	bool pushed = false;
 	for (int i = 0; i < column.size(); ++i)
 	{
+		pushed = false;
 		std::bitset<B> code = dictionary[column[i]];
 		codeLength = getCodeLength(code);
-		//std::cout << "code: " << code << "##" << getCodeLength(code) <<  '\n';
-		if (bitsetLength + getCodeLength(code) > 64) {
-			//std::cout << "attribute vector (full): " << attributeVector[attributeVectorIndex].to_string() << '\n';
-			attributeVectorIndex++;
+		if (bitsetLength + getCodeLength(code) > B) {
 			bitsetLength = 0;
+			attributeVector.push_back(currentBitset);
+			currentBitset.reset();
+			pushed = true;
 		}
-		//std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
-
 		code >>= bitsetLength; //shift
-		//std::cout << "code after shift: " << code << '\n';
-		attributeVector[attributeVectorIndex] |= code; //bitwise or
+		currentBitset |= code; //bitwise or
 		bitsetLength += codeLength;
-		//std::cout << i << ": " << column[i] << ':' << dictionary[column[i]] << ": " <<  getCodeLength(code) << std::endl;
 	}
-	// std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
-
-
+	if(!pushed) {
+		attributeVector.push_back(currentBitset);
+	}
 	return std::pair(dictionary, attributeVector);
 }
 
 
 template <typename D, std::size_t B>
 std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
-    // std::vector<D> decompressed(compressed.second.size());
-    std::unordered_map<std::bitset<B>, D> reverseDictionary;
-    for (auto const& [k, v] : compressed.first) {
-        reverseDictionary[v] = k;
-    }
-    std::vector<D> decompressed;
-    for (auto bitset : compressed.second) {
-        //when attributeVector gets column.size as initial size
-		// if (bitset.none()) { //only 0
-		// 	break; //FIXME: more or less performance workaround, compressed.second contains empty bitsets in the end
-		//}
+	std::unordered_map<std::bitset<B>, D> reverseDictionary;
+	for (auto const& [k, v] : compressed.first) {
+		reverseDictionary[v] = k;
+	}
+	std::vector<D> decompressed;
+	for (auto bitset : compressed.second) {
 		std::bitset<B> mask;
-        size_t shift = 0;
-        //std::cout << "Bitset: " << bitset << std::endl;
+		size_t shift = 0;
 		for (size_t i = 0; i < bitset.size(); ++i) {
 
-			mask.set(63-i, 1);
-            //mask.flip(i);
-            // std::cout << "Shift: " << shift << std::endl;
-            auto search = ((bitset & mask) << shift);
-            if (search.none() && !bitset.none()) {
-                continue;
-            }
-            // std::cout << "Mask:\t\t" << mask << std::endl;
-            // std::cout << "Detected:\t" << (bitset & mask) << std::endl;
-            // std::cout << "Searching: " << shift << "\t" << search << std::endl;
-            if (reverseDictionary.find(search) != reverseDictionary.end()) {
-                // std::cout << "Found: " << reverseDictionary[search] << std::endl;
-                shift = i + 1;
-                mask.reset();
-                decompressed.push_back(reverseDictionary[search]);
-            }
-            // std::cout << std::endl;
-        }
-    }
-    return decompressed;
+			mask.set(63 - i, 1);
+			auto search = ((bitset & mask) << shift);
+			if (search.none() && !bitset.none()) {
+				continue;
+			}
+			if (reverseDictionary.find(search) != reverseDictionary.end()) {
+				shift = i + 1;
+				mask.reset();
+				decompressed.push_back(reverseDictionary[search]);
+			}
+		}
+	}
+	return decompressed;
 }
 
 
@@ -194,7 +181,7 @@ size_t compressedSize(std::pair<std::unordered_map<D, std::bitset<B>>, std::vect
 }
 
 template <typename D>
-Benchmark::Result benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
+Benchmark::CompressionResult benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
 	std::cout << "Huffman - Compressing column" << std::endl;
 	auto compressedColumn = compress<D, 64>(column);
 	std::cout << "Huffman - Decompressing column" << std::endl;
@@ -211,6 +198,6 @@ Benchmark::Result benchmark(const std::vector<D> &column, int runs, int warmup, 
 	auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
 	size_t cSize = compressedSize(compressedColumn);
 	size_t uSize = (sizeof(column) + sizeof(D) * column.size());
-	return Benchmark::Result(compressRuntimes, decompressRuntimes, cSize, uSize);
+	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
 } // end namespace Huffman
