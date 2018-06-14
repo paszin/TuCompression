@@ -175,21 +175,6 @@ std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::
 }
 
 
-
-template <typename D, std::size_t B>
-std::vector<D> decompressSimple(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
-	std::vector<D> decompressed(compressed.second.size());
-	std::unordered_map<std::bitset<B>, D> reverseDictionary;
-	for (auto const& [k, v] : compressed.first) {
-		reverseDictionary[v] = k;
-	}
-	for (int i = 0; i < decompressed.size(); ++i)
-	{
-		decompressed[i] = reverseDictionary[compressed.second[i]];
-	}
-	return decompressed;
-}
-
 template <typename D, std::size_t B>
 size_t compressedSize(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
 	size_t size = 0;
