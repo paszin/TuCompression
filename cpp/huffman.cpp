@@ -39,10 +39,10 @@ void buildCodes(const IHuffmanNode* node, std::bitset<B> &prefix, std::unordered
 	else if (const InternalHuffmanNode<D>* in = dynamic_cast<const InternalHuffmanNode<D>*>(node))
 	{
 		std::bitset<B> left = prefix;
-		buildCodes<D>(in->left, left, dictionary, ++depth);
+		buildCodes<D>(in->left, left, dictionary, depth+1);
 		std::bitset<B> right = prefix;
 		right.flip(right.size() - 1 - depth);
-		buildCodes<D>(in->right, right, dictionary, ++depth);
+		buildCodes<D>(in->right, right, dictionary, depth+1);
 	}
 }
 
