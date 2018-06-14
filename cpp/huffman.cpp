@@ -33,6 +33,7 @@ template <typename D, std::size_t B>
 void buildCodes(const IHuffmanNode* node, std::bitset<B> &prefix, std::unordered_map<D, std::bitset<B>> &dictionary, size_t depth = 0) {
 	if (const LeafHuffmanNode<D>* lf = dynamic_cast<const LeafHuffmanNode<D>*>(node))
 	{
+		prefix.set(prefix.size() - depth - 1, 1); // add a 1 to the end
 		dictionary[lf->data] = prefix;
 	}
 	else if (const InternalHuffmanNode<D>* in = dynamic_cast<const InternalHuffmanNode<D>*>(node))
@@ -112,13 +113,14 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 	{
 		std::bitset<B> code = dictionary[column[i]];
 		codeLength = getCodeLength(code);
+		std::cout << "code: " << code << "##" << getCodeLength(code) <<  '\n';
 		if (bitsetLength + getCodeLength(code) > 64) {
 			std::cout << "attribute vector (full): " << attributeVector[attributeVectorIndex].to_string() << '\n';
 			attributeVectorIndex++;
 			bitsetLength = 0;
 		}
 		//std::cout << "attribute vector: " << attributeVector[attributeVectorIndex].to_string() << '\n';
-		//std::cout << "code: " << code << '\n';
+		
 		code >>= bitsetLength; //shift
 		//std::cout << "code after shift: " << code << '\n';
 		attributeVector[attributeVectorIndex] |= code; //bitwise or
