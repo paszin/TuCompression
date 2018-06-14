@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <iomanip>
 #include <sstream>
+#include "allocator.cpp"
 #include "csv.h"
 #include "benchmark.cpp"
 #include "dictionary.cpp"
@@ -49,7 +50,7 @@ std::pair<Benchmark::CompressionResult, Benchmark::OpResult> dictionaryBenchmark
 			}
 		}
 	}
-	if (i == 4) {
+	else if (i == 4) {
 		// Column to std::time_t
 		// ORDERDATE
 		std::vector<std::time_t> convertedColumn;
@@ -161,7 +162,7 @@ std::pair<Benchmark::CompressionResult, Benchmark::OpResult> dictionaryBenchmark
 	else {
 		// Column as string
 		if (compress) {
-			compressionResult = Dictionary::benchmark_with_dtype<std::string, C>(column, runs, warmup, clearCache);
+			compressionResult = Dictionary::benchmark_with_dtype<C>(column, runs, warmup, clearCache);
 		}
 		if (op) {
 			auto compressedColumn = Dictionary::compress<std::string, C>(column);
@@ -277,6 +278,9 @@ void fullHuffmanBenchmark(std::vector<std::vector<std::string>> &table, std::vec
 	std::vector<Benchmark::CompressionResult> results;
 	for (int i = 0; i < header.size(); ++i)
 	{
+		if(i == 1 || i == 0) {
+			continue;
+		}
 		std::cout << "Huffman - Benchmarking column (" << i + 1 << "/" << header.size() << "): " << header[i] << std::endl;
 		if (i == 0 || i == 1 || i == 7) {
 			// Column to int
@@ -344,8 +348,8 @@ void fullHuffmanBenchmark(std::vector<std::vector<std::string>> &table, std::vec
 
 
 int main(int argc, char* argv[]) {
-	int runs = 10;
-	int warmup = 1;
+	int runs = 300;
+	int warmup = 2;
 	bool clearCache = false;
 
 	// ------------------- Parse Flags -------------- //
