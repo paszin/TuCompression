@@ -2,33 +2,33 @@ namespace Dictionary
 {
 /**
 	Compresses a column:
-		- Uses a std::set to create a sorted list of uniques
-		- Converts the std::set to a std::unordered_map to perform O(1) lookups
+		- Uses a std::vector to create a sorted list of uniques
+		- Converts the std::vector to a std::unordered_map to perform O(1) lookups
 		- Returns a sorted std::vector as dictionary for decompression
 */
 template <typename D, typename C>
 std::pair<std::vector<D>, std::vector<C>> compress(const std::vector<D> &column) {
-	std::set<D> dictionary;
+	std::vector<D> dictionary(column.begin(), column.end());
+	std::sort(dictionary.begin(), dictionary.end());
+	auto last = std::unique(dictionary.begin(), dictionary.end());
+	dictionary.erase(last, dictionary.end());
+
 	std::vector<C> attributeVector(column.size());
 
-	for (auto cell : column) {
-		dictionary.emplace(cell);
-	}
-
-	std::unordered_map<D, C> lookup;
+	std::unordered_map<D, C> lookup(dictionary.size());
 	C j = 0;
-	for (auto key : dictionary) {
+	for (const auto &key : dictionary) {
 		lookup[key] = j;
 		++j;
 	}
 
 	int i = 0;
-	for (auto cell : column) {
+	for (const auto &cell : column) {
 		auto index = lookup[cell];
 		attributeVector[i] = index;
 		++i;
 	}
-	return std::pair(std::vector<D>(dictionary.begin(), dictionary.end()), attributeVector);
+	return std::pair(dictionary, attributeVector);
 }
 
 
@@ -244,21 +244,6 @@ float avg_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
 // ---------------------- BENCHMARK ------------------ //
 
 /**
-	Calculates the compressed size of a column.
-*/
-template <typename D, typename C>
-size_t compressedSize(std::pair<std::vector<D>, std::vector<C>> &compressed) {
-	size_t size = 0;
-	// Size of data structures
-	size += sizeof(compressed.first) + sizeof(compressed.second);
-	// Size of dictionary values
-	size += sizeof(D) * compressed.first.size();
-	// Size of attribute vector values
-	size += sizeof(C) * compressed.second.size();
-	return size;
-}
-
-/**
 	Calls the Benchmark::benchmark functions for compress and decompress with a specific data type for
 	the encoding.
 */
@@ -276,8 +261,72 @@ Benchmark::CompressionResult benchmark_with_dtype(const std::vector<D> &column, 
 	auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
 	std::cout << "Dictionary - Decompress Benchmark" << std::endl;
 	auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
-	size_t cSize = compressedSize(compressedColumn);
-	size_t uSize = (sizeof(column) + sizeof(D) * column.size());
+
+	// Compressed Size
+	// 	Attribute Vector
+	std::vector<C, MyAllocator<C>> compressedWithAlloc(MyAllocator<C>{});
+	compressedWithAlloc.reserve(compressedColumn.second.size());
+	std::copy(compressedColumn.second.begin(), compressedColumn.second.end(), std::back_inserter(compressedWithAlloc));
+	size_t cSize = compressedWithAlloc.get_allocator().allocationInByte();
+	//	Dictionary
+	std::vector<D, MyAllocator<D>> dictionaryWithAlloc(MyAllocator<D>{});
+	dictionaryWithAlloc.reserve(compressedColumn.first.size());
+	std::copy(compressedColumn.first.begin(), compressedColumn.first.end(), std::back_inserter(dictionaryWithAlloc));
+	cSize += dictionaryWithAlloc.get_allocator().allocationInByte();
+
+	// Uncompressed Size
+	std::vector<D, MyAllocator<D>> uncompressedWithAlloc(MyAllocator<D>{});
+	uncompressedWithAlloc.reserve(column.size());
+	std::copy(column.begin(), column.end(), std::back_inserter(uncompressedWithAlloc));
+	size_t uSize = uncompressedWithAlloc.get_allocator().allocationInByte();
+	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
+}
+
+
+/**
+	Calls the Benchmark::benchmark functions for compress and decompress with a specific data type for
+	the encoding.
+*/
+template <typename C>
+Benchmark::CompressionResult benchmark_with_dtype(const std::vector<std::string> &column, int runs, int warmup, bool clearCache) {
+	auto compressedColumn = compress<std::string, C>(column);
+	assert(column == decompress(compressedColumn));
+	std::function<std::pair<std::vector<std::string>, std::vector<C>> ()> compressFunction = [&column]() {
+		return compress<std::string, C>(column);
+	};
+	std::function<std::vector<std::string> ()> decompressFunction = [&compressedColumn]() {
+		return decompress(compressedColumn);
+	};
+	std::cout << "Dictionary - Compress Benchmark" << std::endl;
+	auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
+	std::cout << "Dictionary - Decompress Benchmark" << std::endl;
+	auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
+
+	// Compressed Size
+	// 	Attribute Vector
+	std::vector<C, MyAllocator<C>> avCompressedWithAlloc(MyAllocator<C>{});
+	avCompressedWithAlloc.reserve(compressedColumn.second.size());
+	std::copy(compressedColumn.second.begin(), compressedColumn.second.end(), std::back_inserter(avCompressedWithAlloc));
+	size_t cSize = avCompressedWithAlloc.get_allocator().allocationInByte();
+	//	Dictionary
+	std::vector<std::string, MyAllocator<std::string>> dictionaryWithAlloc(MyAllocator<std::string>{});
+	dictionaryWithAlloc.reserve(compressedColumn.first.size());
+	std::copy(compressedColumn.first.begin(), compressedColumn.first.end(), std::back_inserter(dictionaryWithAlloc));
+	cSize += dictionaryWithAlloc.get_allocator().allocationInByte();
+	//		Size of individual std::string
+	for(const auto &v : dictionaryWithAlloc) {
+		cSize += v.size() * sizeof(std::string::value_type);
+	}
+
+	// Uncompressed Size
+	std::vector<std::string, MyAllocator<std::string>> uncompressedWithAlloc(MyAllocator<std::string>{});
+	uncompressedWithAlloc.reserve(column.size());
+	std::copy(column.begin(), column.end(), std::back_inserter(uncompressedWithAlloc));
+	size_t uSize = uncompressedWithAlloc.get_allocator().allocationInByte();
+	//		Size of individual std::string
+	for(const auto &v : uncompressedWithAlloc) {
+		uSize += v.size() * sizeof(std::string::value_type);
+	}
 	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
 
