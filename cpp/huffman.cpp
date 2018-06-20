@@ -108,10 +108,13 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 
 	// Compress Attribute Vector
 	std::vector<std::bitset<B>> attributeVector;
+	std::vector<std::pair<D, D>> boundsAttributeVector;
 	int bitsetLength = 0;
 	int codeLength;
 	std::bitset<B> currentBitset;
+	std::pair<D, D> bounds;
 	bool pushed = false;
+	bool firstRun = true;
 	for (int i = 0; i < column.size(); ++i)
 	{
 		pushed = false;
@@ -122,12 +125,25 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 			attributeVector.push_back(currentBitset);
 			currentBitset.reset();
 			pushed = true;
+			firstRun = true;
 		}
 		code >>= bitsetLength; //shift
 		currentBitset |= code; //bitwise or
 		bitsetLength += codeLength;
+		// save min and max value to bounds
+		if (firstRun) {
+				bounds.first = column[i];
+				bounds.second = column[i];
+				//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
+			} else {
+				bounds.first = std::min(bounds.first, column[i]);
+				bounds.second = std::max(bounds.second, column[i]);
+				//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
+			}
+			firstRun = false;
 	}
 	if(!pushed) {
+		boundsAttributeVector.push_back(bounds);
 		attributeVector.push_back(currentBitset);
 	}
 	return std::pair(dictionary, attributeVector);
@@ -146,7 +162,7 @@ std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::
 		size_t shift = 0;
 		for (size_t i = 0; i < bitset.size(); ++i) {
 
-			mask.set(63 - i, 1);
+			mask.set(63 - i, 1); // 63 = B - 1
 			auto search = ((bitset & mask) << shift);
 			if (search.none() && !bitset.none()) {
 				continue;
