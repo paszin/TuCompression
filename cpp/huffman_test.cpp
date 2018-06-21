@@ -21,6 +21,10 @@ int main(int argc, char const *argv[])
 	assert(Huffman::getCodeLength(bs) == 4);
 	{
 		std::vector<int> column = {1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 6};
+		for(size_t i = 0; i < 40; i++)
+		{
+			column.push_back(i);
+		}
 		auto compressedColumn = Huffman::compress<int, 64>(column);
 		{
 			auto decompressed = Huffman::decompress(compressedColumn);
