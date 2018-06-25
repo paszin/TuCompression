@@ -71,7 +71,10 @@ size_t tree_depth(const IHuffmanNode* node, size_t depth = 0) {
 }
 
 template <typename D, std::size_t B>
-std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> compress(const std::vector<D> &column) {
+std::tuple<	std::unordered_map<D, std::bitset<B>>, 
+			std::vector<std::bitset<B>>,
+			std::vector<std::pair<D, D>>> 
+	compress(const std::vector<D> &column) {
 	auto compare = [](const IHuffmanNode * left, const IHuffmanNode * right) {
 		return left->frequency > right->frequency;
 	};
@@ -122,6 +125,8 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 		codeLength = getCodeLength(code);
 		if (bitsetLength + getCodeLength(code) > B) {
 			bitsetLength = 0;
+			//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
+			boundsAttributeVector.push_back(bounds);
 			attributeVector.push_back(currentBitset);
 			currentBitset.reset();
 			pushed = true;
@@ -143,10 +148,11 @@ std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> co
 			firstRun = false;
 	}
 	if(!pushed) {
+		//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
 		boundsAttributeVector.push_back(bounds);
 		attributeVector.push_back(currentBitset);
 	}
-	return std::pair(dictionary, attributeVector);
+	return std::tuple(dictionary, attributeVector, boundsAttributeVector);
 }
 
 
@@ -176,6 +182,8 @@ std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::
 	}
 	return decompressed;
 }
+
+
 
 
 template <typename D, std::size_t B>
@@ -216,4 +224,187 @@ Benchmark::CompressionResult benchmark(const std::vector<D> &column, int runs, i
 	size_t uSize = (sizeof(column) + sizeof(D) * column.size());
 	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
+
+
+// ---------------------- INTERNAL ------------------ //
+
+/**
+	Returns indices to all values in a vector matching the predicate.
+*/
+
+template <typename D, std::size_t B>
+std::unordered_map<std::bitset<B>, D> getReverseDictionary(std::unordered_map<D, std::bitset<B>> dictionary) {
+	std::unordered_map<std::bitset<B>, D> reverseDictionary;
+	for (auto const& [k, v] : dictionary) {
+		reverseDictionary[v] = k;
+	}
+	return reverseDictionary;
+}
+
+template <typename D, std::size_t B>
+std::vector<D> decompressBlock(std::bitset<B> block, std::unordered_map<std::bitset<B>, D> reverseDictionary) {
+	std::vector<D> decompressed;
+	std::bitset<B> mask;
+	size_t shift = 0;
+	for (size_t i = 0; i < block.size(); ++i) {
+		mask.set(B - 1 - i, 1);
+		auto search = ((block & mask) << shift);
+		if (search.none() && !block.none()) {
+			continue;
+		}
+		if (reverseDictionary.find(search) != reverseDictionary.end()) {
+			shift = i + 1;
+			mask.reset();
+			decompressed.push_back(reverseDictionary[search]);
+			}
+		}
+	return decompressed;
+}
+
+
+
+// ---------------------- OPS ------------------ //
+
+/**
+	Counts all values matching the predicate.
+*/
+template <typename D, std::size_t SIZE>
+size_t count_where_op_equal(std::unordered_map<D, std::bitset<SIZE>> dictionary,
+							 std::vector<std::bitset<SIZE>> compressed,
+							 std::vector<std::pair<D, D>> bounds,
+							 D value) {
+	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
+	int count = 0;
+	for(size_t i = 0; i < compressed.size(); i++)
+	{
+		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
+		if (bounds[i].first > value || bounds[i].second < value ) {
+			continue;
+		}
+		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
+		
+		for(size_t j = 0; j < block.size(); j++)
+		{
+			if (block[j] == value) {
+				count++;
+			}
+		}
+	}
+	return count;	
+}
+
+
+template <typename D, typename C>
+D max_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
+	return compressed.first[compressed.first.size() - 1];
+}
+
+template <typename D, typename C>
+D min_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
+	return compressed.first[0];
+}
+
+/**
+	Search for values matching a predicate.
+	1. Call where_view().
+	2. Call partial_decompress().
+*/
+template <typename D, typename C>
+std::vector<D> where_view_op(std::pair<std::vector<D>, std::vector<C>> &compressed, std::function<bool (D)> predicate) {
+	auto attributeVectorWhere = where_view(compressed, predicate);
+	return partial_decompress(compressed, attributeVectorWhere);
+}
+
+/**
+	Search for values matching a predicate.
+	1. Call where_copy().
+	2. Call decompress().
+*/
+template <typename D, typename C>
+std::vector<D> where_copy_op(std::pair<std::vector<D>, std::vector<C>> &compressed, std::function<bool (D)> predicate) {
+	auto attributeVectorWhere = where_copy(compressed, predicate);
+	auto temp_compressed = std::pair(compressed.first, attributeVectorWhere);
+	return decompress(temp_compressed);
+}
+
+/**
+	Calculates the sum of all values in a column.
+*/
+template <typename D, typename C>
+size_t sum_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
+	size_t total_sum = 0;
+	auto attributeVector = compressed.second;
+	if (compressed.first.size() == 1) {
+		// If we have only a single unique just multiply it with the attribute vector size
+		total_sum = compressed.first[0] * compressed.second.size();
+	}
+	else {
+		// Sort the vector and count occurrences. Just decompress old value when new value appears
+		std::sort(attributeVector.begin(), attributeVector.end());
+		C lastValue = attributeVector[0];
+		size_t lastValueCount = 1;
+		for (int i = 1; i < attributeVector.size(); ++i)
+		{
+			if (lastValue == attributeVector[i]) {
+				++lastValueCount;
+			}
+			else if (lastValue != attributeVector[i]) {
+				// New value
+				total_sum += compressed.first[lastValue] * lastValueCount;
+				lastValue = attributeVector[i];
+				lastValueCount = 1;
+			}
+			if (i + 1 == attributeVector.size()) {
+				// End of loop
+				total_sum += compressed.first[lastValue] * lastValueCount;
+			}
+		}
+	}
+	return total_sum;
+}
+
+/**
+	Calculates the sum of all values in a column matching predicate.
+	1. Call where_copy().
+	2. Call sum_op().
+*/
+template <typename D, typename C>
+size_t sum_where_copy_op(std::pair<std::vector<D>, std::vector<C>> &compressed, std::function<bool (D)> predicate) {
+	auto attributeVectorWhere = where_copy(compressed, predicate);
+	auto temp_compressed = std::pair(compressed.first, attributeVectorWhere);
+	return sum_op(temp_compressed);
+}
+
+/**
+	Calculates the average of all values in a column.
+	IF (size==1) -> average = first element
+	ELSE:
+		1. Call sum_op().
+		2. Divide by total number of elements.
+*/
+template <typename D, typename C>
+float avg_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
+	float avg = 0;
+	if (compressed.first.size() == 1) {
+		// If we have only a single unique then the avg is that value
+		avg = compressed.first[0];
+	}
+	else {
+		// Build total sum and divide by number of values
+		auto total_sum = sum_op(compressed);
+		avg = (float)total_sum / (float)compressed.second.size();
+	}
+	return avg;
+}
+
+
+
+
+
+
+
+
+
+
+
 } // end namespace Huffman

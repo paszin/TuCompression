@@ -26,17 +26,22 @@ int main(int argc, char const *argv[])
 			column.push_back(i);
 		}
 		auto compressedColumn = Huffman::compress<int, 64>(column);
-		{
-			auto decompressed = Huffman::decompress(compressedColumn);
-			assert(column == decompressed);
-		}
+		auto compressedPair = std::make_pair(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
+		auto decompressed = Huffman::decompress(compressedPair);
+		assert(column == decompressed);
+
+		
+		size_t count = Huffman::count_where_op_equal<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), 1);
+		std::cout << "Count: " << count << '\n';
+		assert(count == 5);
 	}
 	{
 		std::vector<std::string> column = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "1"};
 		std::vector<std::string> expected = {"6", "7", "8", "9"};
 		auto compressedColumn = Huffman::compress<std::string, 64>(column);
+		auto compressedPair = std::make_pair(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
 		{
-			auto decompressed = Huffman::decompress(compressedColumn);
+			auto decompressed = Huffman::decompress(compressedPair);
 			assert(column == decompressed);
 		}
 	}
