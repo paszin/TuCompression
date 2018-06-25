@@ -379,109 +379,26 @@ D sum_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 	return sum;
 }
 
+//AVG
 
-
-/**
-	Search for values matching a predicate.
-	1. Call where_view().
-	2. Call partial_decompress().
-*/
-template <typename D, typename C>
-std::vector<D> where_view_op(std::pair<std::vector<D>, std::vector<C>> &compressed, std::function<bool (D)> predicate) {
-	auto attributeVectorWhere = where_view(compressed, predicate);
-	return partial_decompress(compressed, attributeVectorWhere);
-}
-
-/**
-	Search for values matching a predicate.
-	1. Call where_copy().
-	2. Call decompress().
-*/
-template <typename D, typename C>
-std::vector<D> where_copy_op(std::pair<std::vector<D>, std::vector<C>> &compressed, std::function<bool (D)> predicate) {
-	auto attributeVectorWhere = where_copy(compressed, predicate);
-	auto temp_compressed = std::pair(compressed.first, attributeVectorWhere);
-	return decompress(temp_compressed);
-}
-
-/**
-	Calculates the sum of all values in a column.
-*/
-template <typename D, typename C>
-size_t sum_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
-	size_t total_sum = 0;
-	auto attributeVector = compressed.second;
-	if (compressed.first.size() == 1) {
-		// If we have only a single unique just multiply it with the attribute vector size
-		total_sum = compressed.first[0] * compressed.second.size();
-	}
-	else {
-		// Sort the vector and count occurrences. Just decompress old value when new value appears
-		std::sort(attributeVector.begin(), attributeVector.end());
-		C lastValue = attributeVector[0];
-		size_t lastValueCount = 1;
-		for (int i = 1; i < attributeVector.size(); ++i)
+template <typename D, std::size_t SIZE>
+float avg_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
+							 std::vector<std::bitset<SIZE>> compressed) {
+	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
+	D sum = 0;
+	size_t count = 0;
+	for(size_t i = 0; i < compressed.size(); i++)
+	{
+		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
+		for(size_t j = 0; j < block.size(); j++)
 		{
-			if (lastValue == attributeVector[i]) {
-				++lastValueCount;
-			}
-			else if (lastValue != attributeVector[i]) {
-				// New value
-				total_sum += compressed.first[lastValue] * lastValueCount;
-				lastValue = attributeVector[i];
-				lastValueCount = 1;
-			}
-			if (i + 1 == attributeVector.size()) {
-				// End of loop
-				total_sum += compressed.first[lastValue] * lastValueCount;
-			}
+				sum += block[j];
+				count++;
 		}
+
 	}
-	return total_sum;
+	return (float)sum/(float)count;
 }
-
-/**
-	Calculates the sum of all values in a column matching predicate.
-	1. Call where_copy().
-	2. Call sum_op().
-*/
-template <typename D, typename C>
-size_t sum_where_copy_op(std::pair<std::vector<D>, std::vector<C>> &compressed, std::function<bool (D)> predicate) {
-	auto attributeVectorWhere = where_copy(compressed, predicate);
-	auto temp_compressed = std::pair(compressed.first, attributeVectorWhere);
-	return sum_op(temp_compressed);
-}
-
-/**
-	Calculates the average of all values in a column.
-	IF (size==1) -> average = first element
-	ELSE:
-		1. Call sum_op().
-		2. Divide by total number of elements.
-*/
-template <typename D, typename C>
-float avg_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
-	float avg = 0;
-	if (compressed.first.size() == 1) {
-		// If we have only a single unique then the avg is that value
-		avg = compressed.first[0];
-	}
-	else {
-		// Build total sum and divide by number of values
-		auto total_sum = sum_op(compressed);
-		avg = (float)total_sum / (float)compressed.second.size();
-	}
-	return avg;
-}
-
-
-
-
-
-
-
-
-
 
 
 } // end namespace Huffman

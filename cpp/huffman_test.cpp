@@ -62,6 +62,10 @@ int main(int argc, char const *argv[])
 		sum = Huffman::sum_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), NULL, NULL);
 		std::cout << "Sum (811): " << sum << '\n';
 		assert(sum == 811);
+
+		float avg = Huffman::avg_op<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
+		std::cout << "AVG (15.596): " << avg << '\n';
+		assert(avg > 15.596 && avg < 15.597);
 	}
 	{
 		std::vector<std::string> column = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "1"};
