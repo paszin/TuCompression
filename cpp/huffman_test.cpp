@@ -54,6 +54,14 @@ int main(int argc, char const *argv[])
 		int max = Huffman::max_op<int>(std::get<2>(compressedColumn));
 		std::cout << "Max: " << max << '\n';
 		assert(max == 39);
+
+		int sum = Huffman::sum_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), 10, 11);
+		std::cout << "Sum (10): " << sum << '\n';
+		assert(sum == 10);
+
+		sum = Huffman::sum_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), NULL, NULL);
+		std::cout << "Sum (811): " << sum << '\n';
+		assert(sum == 811);
 	}
 	{
 		std::vector<std::string> column = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "1"};

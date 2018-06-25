@@ -311,8 +311,8 @@ size_t count_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
 		for(size_t j = 0; j < block.size(); j++)
 		{
-			if ((to != NULL && block[j] < to) && (from == NULL || block[j] > from) ||
-				(from != NULL && block[j] >= from) && (to == NULL || block[j] > to))
+			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
+				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
 				{
 				count++;
 				}
@@ -348,6 +348,38 @@ D max_op(std::vector<std::pair<D, D>> bounds) {
 	}
 	return max;
 }
+
+//SUM
+
+template <typename D, std::size_t SIZE>
+D sum_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
+							 std::vector<std::bitset<SIZE>> compressed,
+							 std::vector<std::pair<D, D>> bounds,
+							 D from = NULL, D to = NULL) {
+	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
+	D sum = 0;
+	for(size_t i = 0; i < compressed.size(); i++)
+	{
+		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
+		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
+			continue;
+		}
+		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
+		for(size_t j = 0; j < block.size(); j++)
+		{
+			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
+				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to) ||
+				(from == NULL && to == NULL))
+				{
+				sum += block[j];
+				}
+		}
+
+	}
+	return sum;
+}
+
+
 
 /**
 	Search for values matching a predicate.
