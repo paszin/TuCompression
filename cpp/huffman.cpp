@@ -323,15 +323,30 @@ size_t count_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 }
 
 
+template <typename D>
+D min_op(std::vector<std::pair<D, D>> bounds) {
+	D min = bounds[0].first;
 
-template <typename D, typename C>
-D max_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
-	return compressed.first[compressed.first.size() - 1];
+	for(size_t i = 0; i < bounds.size(); i++)
+	{
+		if (bounds[i].first < min) {
+			min = bounds[i].first;
+		}
+	}
+	return min;
 }
 
-template <typename D, typename C>
-D min_op(std::pair<std::vector<D>, std::vector<C>> &compressed) {
-	return compressed.first[0];
+template <typename D>
+D max_op(std::vector<std::pair<D, D>> bounds) {
+	D max = bounds[0].second;
+
+	for(size_t i = 0; i < bounds.size(); i++)
+	{
+		if (bounds[i].second > max) {
+			max = bounds[i].second;
+		}
+	}
+	return max;
 }
 
 /**

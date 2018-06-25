@@ -31,7 +31,7 @@ int main(int argc, char const *argv[])
 		auto decompressed = Huffman::decompress(compressedPair);
 		assert(column == decompressed);
 
-		
+
 		size_t count = Huffman::count_where_op_equal<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), 1);
 		assert(count == 5);
 
@@ -40,12 +40,20 @@ int main(int argc, char const *argv[])
 		assert(count == 7);
 
 		count = Huffman::count_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), 30, NULL);
-		std::cout << "Count (10): " << count << '\n';		
+		std::cout << "Count (10): " << count << '\n';
 		assert(count == 10);
 
 		count = Huffman::count_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), NULL, 2);
-		std::cout << "Count (6): " << count << '\n';		
+		std::cout << "Count (6): " << count << '\n';
 		assert(count == 6);
+
+		int min = Huffman::min_op<int>(std::get<2>(compressedColumn));
+		std::cout << "Min: " << min << '\n';
+		assert(min == 0);
+
+		int max = Huffman::max_op<int>(std::get<2>(compressedColumn));
+		std::cout << "Max: " << max << '\n';
+		assert(max == 39);
 	}
 	{
 		std::vector<std::string> column = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "1"};
