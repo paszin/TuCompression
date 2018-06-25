@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <vector>
 #include <unordered_map>
 #include <map>
@@ -32,8 +33,19 @@ int main(int argc, char const *argv[])
 
 		
 		size_t count = Huffman::count_where_op_equal<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), 1);
-		std::cout << "Count: " << count << '\n';
 		assert(count == 5);
+
+		count = Huffman::count_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), 3, 6);
+		std::cout << "Count (7): " << count << '\n';
+		assert(count == 7);
+
+		count = Huffman::count_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), 30, NULL);
+		std::cout << "Count (10): " << count << '\n';		
+		assert(count == 10);
+
+		count = Huffman::count_where_op_range<int, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), NULL, 2);
+		std::cout << "Count (6): " << count << '\n';		
+		assert(count == 6);
 	}
 	{
 		std::vector<std::string> column = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "1"};

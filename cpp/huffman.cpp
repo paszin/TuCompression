@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 namespace Huffman
 {
 class IHuffmanNode
@@ -71,9 +73,9 @@ size_t tree_depth(const IHuffmanNode* node, size_t depth = 0) {
 }
 
 template <typename D, std::size_t B>
-std::tuple<	std::unordered_map<D, std::bitset<B>>, 
+std::tuple<	std::unordered_map<D, std::bitset<B>>,
 			std::vector<std::bitset<B>>,
-			std::vector<std::pair<D, D>>> 
+			std::vector<std::pair<D, D>>>
 	compress(const std::vector<D> &column) {
 	auto compare = [](const IHuffmanNode * left, const IHuffmanNode * right) {
 		return left->frequency > right->frequency;
@@ -282,7 +284,7 @@ size_t count_where_op_equal(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 			continue;
 		}
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
-		
+
 		for(size_t j = 0; j < block.size(); j++)
 		{
 			if (block[j] == value) {
@@ -290,8 +292,36 @@ size_t count_where_op_equal(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 			}
 		}
 	}
-	return count;	
+	return count;
 }
+
+template <typename D, std::size_t SIZE>
+size_t count_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
+							 std::vector<std::bitset<SIZE>> compressed,
+							 std::vector<std::pair<D, D>> bounds,
+							 D from = NULL, D to = NULL) {
+	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
+	int count = 0;
+	for(size_t i = 0; i < compressed.size(); i++)
+	{
+		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
+		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
+			continue;
+		}
+		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
+		for(size_t j = 0; j < block.size(); j++)
+		{
+			if ((to != NULL && block[j] < to) && (from == NULL || block[j] > from) ||
+				(from != NULL && block[j] >= from) && (to == NULL || block[j] > to))
+				{
+				count++;
+				}
+		}
+
+	}
+	return count;
+}
+
 
 
 template <typename D, typename C>
