@@ -401,4 +401,56 @@ float avg_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 }
 
 
+//
+template <typename D, std::size_t SIZE>
+std::vector<D> values_where_range_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
+							 std::vector<std::bitset<SIZE>> compressed,
+							 std::vector<std::pair<D, D>> bounds,
+							 D from = NULL, D to = NULL) {
+	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
+	std::vector<D> result;
+	for(size_t i = 0; i < compressed.size(); i++)
+	{
+		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
+		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
+			continue;
+		}
+		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
+		for(size_t j = 0; j < block.size(); j++)
+		{
+			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
+				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+				{
+				result.push_back(block[j]);
+				}
+		}
+
+	}
+	return result;
+}
+
+template <typename D, std::size_t SIZE>
+std::vector<D> indexes_where_range_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
+							 std::vector<std::bitset<SIZE>> compressed,
+							 D from = NULL, D to = NULL) {
+	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
+	std::vector<D> result;
+	size_t index = 0;
+	for(size_t i = 0; i < compressed.size(); i++)
+	{
+		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
+		for(size_t j = 0; j < block.size(); j++)
+		{
+			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
+				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+				{
+				result.push_back(index);
+				}
+			index++;
+		}
+
+	}
+	return result;
+}
+
 } // end namespace Huffman
