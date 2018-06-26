@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <iomanip>
 #include <sstream>
+#include "allocator.cpp"
 #include "benchmark.cpp"
 #include "dictionary.cpp"
 

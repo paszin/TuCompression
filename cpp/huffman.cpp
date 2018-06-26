@@ -74,9 +74,9 @@ size_t tree_depth(const IHuffmanNode* node, size_t depth = 0) {
 
 template <typename D, std::size_t B>
 std::tuple<	std::unordered_map<D, std::bitset<B>>,
-			std::vector<std::bitset<B>>,
-			std::vector<std::pair<D, D>>>
-	compress(const std::vector<D> &column) {
+    std::vector<std::bitset<B>>,
+    std::vector<std::pair<D, D>>>
+compress(const std::vector<D> &column) {
 	auto compare = [](const IHuffmanNode * left, const IHuffmanNode * right) {
 		return left->frequency > right->frequency;
 	};
@@ -139,17 +139,17 @@ std::tuple<	std::unordered_map<D, std::bitset<B>>,
 		bitsetLength += codeLength;
 		// save min and max value to bounds
 		if (firstRun) {
-				bounds.first = column[i];
-				bounds.second = column[i];
-				//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
-			} else {
-				bounds.first = std::min(bounds.first, column[i]);
-				bounds.second = std::max(bounds.second, column[i]);
-				//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
-			}
-			firstRun = false;
+			bounds.first = column[i];
+			bounds.second = column[i];
+			//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
+		} else {
+			bounds.first = std::min(bounds.first, column[i]);
+			bounds.second = std::max(bounds.second, column[i]);
+			//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
+		}
+		firstRun = false;
 	}
-	if(!pushed) {
+	if (!pushed) {
 		//std::cout << "Bounds" << bounds.first << "   " << bounds.second << '\n';
 		boundsAttributeVector.push_back(bounds);
 		attributeVector.push_back(currentBitset);
@@ -186,50 +186,6 @@ std::vector<D> decompress(std::pair<std::unordered_map<D, std::bitset<B>>, std::
 }
 
 
-
-
-template <typename D, std::size_t B>
-size_t compressedSize(std::pair<std::unordered_map<D, std::bitset<B>>, std::vector<std::bitset<B>>> &compressed) {
-	size_t size = 0;
-	// Size of dictionary + attribute vector data structures => std::unordered_map + std::vector
-	size += sizeof(compressed.first) + sizeof(compressed.second);
-	// Size of dictionary values
-	for (auto const& [k, v] : compressed.first) {
-		// D + std::bitset<B>
-		size += sizeof(k) + sizeof(v);
-	}
-	// Size of attribute vector values
-	for (auto attribute : compressed.second) {
-		// std::bitest<B>
-		size += sizeof(attribute);
-	}
-	return size;
-}
-
-template <typename D>
-Benchmark::CompressionResult benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
-	std::cout << "Huffman - Compressing column" << std::endl;
-	auto compressedColumn = compress<D, 64>(column);
-	auto compressedPair = std::make_pair(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
-	std::cout << "Huffman - Decompressing column" << std::endl;
-	assert(column == decompress(compressedPair));
-	// std::tuple<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<D, D>>>
-	std::function<std::tuple<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<D, D>>> ()> compressFunction = [&column]() {
-		return compress<D, 64>(column);
-	};
-	std::function<std::vector<D> ()> decompressFunction = [&compressedPair]() {
-		return decompress(compressedPair);
-	};
-	std::cout << "Huffman - Benchmarking Compression" << std::endl;
-	auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
-	std::cout << "Huffman - Benchmarking Decompression" << std::endl;
-	auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
-	size_t cSize = compressedSize(compressedPair);
-	size_t uSize = (sizeof(column) + sizeof(D) * column.size());
-	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
-}
-
-
 // ---------------------- INTERNAL ------------------ //
 
 /**
@@ -260,8 +216,8 @@ std::vector<D> decompressBlock(std::bitset<B> block, std::unordered_map<std::bit
 			shift = i + 1;
 			mask.reset();
 			decompressed.push_back(reverseDictionary[search]);
-			}
 		}
+	}
 	return decompressed;
 }
 
@@ -274,12 +230,12 @@ std::vector<D> decompressBlock(std::bitset<B> block, std::unordered_map<std::bit
 */
 template <typename D, std::size_t SIZE>
 size_t count_where_op_equal(std::unordered_map<D, std::bitset<SIZE>> dictionary,
-							 std::vector<std::bitset<SIZE>> compressed,
-							 std::vector<std::pair<D, D>> bounds,
-							 D value) {
+                            std::vector<std::bitset<SIZE>> compressed,
+                            std::vector<std::pair<D, D>> bounds,
+                            D value) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	int count = 0;
-	for(size_t i = 0; i < compressed.size(); i++)
+	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
 		if (bounds[i].first > value || bounds[i].second < value ) {
@@ -287,7 +243,7 @@ size_t count_where_op_equal(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 		}
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
 
-		for(size_t j = 0; j < block.size(); j++)
+		for (size_t j = 0; j < block.size(); j++)
 		{
 			if (block[j] == value) {
 				count++;
@@ -299,25 +255,25 @@ size_t count_where_op_equal(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 
 template <typename D, std::size_t SIZE>
 size_t count_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
-							 std::vector<std::bitset<SIZE>> compressed,
-							 std::vector<std::pair<D, D>> bounds,
-							 D from = NULL, D to = NULL) {
+                            std::vector<std::bitset<SIZE>> compressed,
+                            std::vector<std::pair<D, D>> bounds,
+                            D from = NULL, D to = NULL) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	int count = 0;
-	for(size_t i = 0; i < compressed.size(); i++)
+	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
 		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
 			continue;
 		}
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
-		for(size_t j = 0; j < block.size(); j++)
+		for (size_t j = 0; j < block.size(); j++)
 		{
 			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
-				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
-				{
+			        (from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+			{
 				count++;
-				}
+			}
 		}
 
 	}
@@ -329,7 +285,7 @@ template <typename D>
 D min_op(std::vector<std::pair<D, D>> bounds) {
 	D min = bounds[0].first;
 
-	for(size_t i = 0; i < bounds.size(); i++)
+	for (size_t i = 0; i < bounds.size(); i++)
 	{
 		if (bounds[i].first < min) {
 			min = bounds[i].first;
@@ -342,7 +298,7 @@ template <typename D>
 D max_op(std::vector<std::pair<D, D>> bounds) {
 	D max = bounds[0].second;
 
-	for(size_t i = 0; i < bounds.size(); i++)
+	for (size_t i = 0; i < bounds.size(); i++)
 	{
 		if (bounds[i].second > max) {
 			max = bounds[i].second;
@@ -351,80 +307,75 @@ D max_op(std::vector<std::pair<D, D>> bounds) {
 	return max;
 }
 
-//SUM
-
 template <typename D, std::size_t SIZE>
 D sum_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
-							 std::vector<std::bitset<SIZE>> compressed,
-							 std::vector<std::pair<D, D>> bounds,
-							 D from = NULL, D to = NULL) {
+                     std::vector<std::bitset<SIZE>> compressed,
+                     std::vector<std::pair<D, D>> bounds,
+                     D from = NULL, D to = NULL) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	D sum = 0;
-	for(size_t i = 0; i < compressed.size(); i++)
+	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
 		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
 			continue;
 		}
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
-		for(size_t j = 0; j < block.size(); j++)
+		for (size_t j = 0; j < block.size(); j++)
 		{
 			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
-				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to) ||
-				(from == NULL && to == NULL))
-				{
+			        (from != NULL && block[j] >= from) && (to == NULL || block[j] < to) ||
+			        (from == NULL && to == NULL))
+			{
 				sum += block[j];
-				}
+			}
 		}
 
 	}
 	return sum;
 }
 
-//AVG
-
 template <typename D, std::size_t SIZE>
 float avg_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
-							 std::vector<std::bitset<SIZE>> compressed) {
+             std::vector<std::bitset<SIZE>> compressed) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	D sum = 0;
 	size_t count = 0;
-	for(size_t i = 0; i < compressed.size(); i++)
+	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
-		for(size_t j = 0; j < block.size(); j++)
+		for (size_t j = 0; j < block.size(); j++)
 		{
-				sum += block[j];
-				count++;
+			sum += block[j];
+			count++;
 		}
 
 	}
-	return (float)sum/(float)count;
+	return (float)sum / (float)count;
 }
 
 
-//
 template <typename D, std::size_t SIZE>
 std::vector<D> values_where_range_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
-							 std::vector<std::bitset<SIZE>> compressed,
-							 std::vector<std::pair<D, D>> bounds,
-							 D from = NULL, D to = NULL) {
+                                     std::vector<std::bitset<SIZE>> compressed,
+                                     std::vector<std::pair<D, D>> bounds,
+                                     D from = NULL, D to = NULL) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	std::vector<D> result;
-	for(size_t i = 0; i < compressed.size(); i++)
+	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
 		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
 			continue;
 		}
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
-		for(size_t j = 0; j < block.size(); j++)
+		for (size_t j = 0; j < block.size(); j++)
 		{
 			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
-				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
-				{
+			        (from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+			{
 				result.push_back(block[j]);
-				}
+			}
 		}
 
 	}
@@ -433,26 +384,122 @@ std::vector<D> values_where_range_op(std::unordered_map<D, std::bitset<SIZE>> di
 
 template <typename D, std::size_t SIZE>
 std::vector<D> indexes_where_range_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
-							 std::vector<std::bitset<SIZE>> compressed,
-							 D from = NULL, D to = NULL) {
+                                      std::vector<std::bitset<SIZE>> compressed,
+                                      D from = NULL, D to = NULL) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	std::vector<D> result;
 	size_t index = 0;
-	for(size_t i = 0; i < compressed.size(); i++)
+	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
-		for(size_t j = 0; j < block.size(); j++)
+		for (size_t j = 0; j < block.size(); j++)
 		{
 			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
-				(from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
-				{
+			        (from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+			{
 				result.push_back(index);
-				}
+			}
 			index++;
 		}
 
 	}
 	return result;
+}
+
+
+// ---------------------- BENCHMARK ------------------ //
+
+template <typename D>
+Benchmark::CompressionResult benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
+	std::cout << "Huffman - Compressing column" << std::endl;
+	auto compressedColumn = compress<D, 64>(column);
+	auto compressedPair = std::make_pair(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
+	std::cout << "Huffman - Decompressing column" << std::endl;
+	assert(column == decompress(compressedPair));
+	// std::tuple<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<D, D>>>
+	std::function<std::tuple<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<D, D>>> ()> compressFunction = [&column]() {
+		return compress<D, 64>(column);
+	};
+	std::function<std::vector<D> ()> decompressFunction = [&compressedPair]() {
+		return decompress(compressedPair);
+	};
+	std::cout << "Huffman - Benchmarking Compression" << std::endl;
+	auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
+	std::cout << "Huffman - Benchmarking Decompression" << std::endl;
+	auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
+
+	// Compressed Size
+	size_t cSize = 0;
+	{
+		auto dictionary = std::get<0>(compressedColumn);
+		auto attributeVector = std::get<1>(compressedColumn);
+		auto boundsVector = std::get<2>(compressedColumn);
+		cSize += sizeof(dictionary) + sizeof(attributeVector) + sizeof(boundsVector);
+
+		std::unordered_map<D, std::bitset<64>, std::hash<D>, std::equal_to<D>, MyAllocator<std::pair<const D, std::bitset<64>>>> dictionaryWithAlloc(dictionary.begin(), dictionary.end());
+		cSize += dictionaryWithAlloc.get_allocator().allocationInByte();
+		std::vector<std::bitset<64>, MyAllocator<std::bitset<64>>> attributeVectorWithAlloc(attributeVector.begin(), attributeVector.end());
+		cSize += attributeVectorWithAlloc.get_allocator().allocationInByte();
+		std::vector<std::pair<D, D>, MyAllocator<std::pair<D, D>>> boundsVectorWithAlloc(boundsVector.begin(), boundsVector.end());
+		cSize += boundsVectorWithAlloc.get_allocator().allocationInByte();
+	}
+	// Uncompressed Size
+	std::vector<D, MyAllocator<D>> uncompressedWithAlloc(column.begin(), column.end());
+	size_t uSize = uncompressedWithAlloc.get_allocator().allocationInByte();
+	uSize += sizeof(column);
+	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
+}
+
+Benchmark::CompressionResult benchmark(const std::vector<std::string> &column, int runs, int warmup, bool clearCache) {
+	std::cout << "Huffman - Compressing column" << std::endl;
+	auto compressedColumn = compress<std::string, 64>(column);
+	auto compressedPair = std::make_pair(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
+	std::cout << "Huffman - Decompressing column" << std::endl;
+	assert(column == decompress(compressedPair));
+	// std::tuple<std::unordered_map<std::string, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<std::string, std::string>>>
+	std::function<std::tuple<std::unordered_map<std::string, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<std::string, std::string>>> ()> compressFunction = [&column]() {
+		return compress<std::string, 64>(column);
+	};
+	std::function<std::vector<std::string> ()> decompressFunction = [&compressedPair]() {
+		return decompress(compressedPair);
+	};
+	std::cout << "Huffman - Benchmarking Compression" << std::endl;
+	auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
+	std::cout << "Huffman - Benchmarking Decompression" << std::endl;
+	auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
+
+	// Compressed Size
+	size_t cSize = 0;
+	{
+		auto dictionary = std::get<0>(compressedColumn);
+		auto attributeVector = std::get<1>(compressedColumn);
+		auto boundsVector = std::get<2>(compressedColumn);
+		cSize += sizeof(dictionary) + sizeof(attributeVector) + sizeof(boundsVector);
+
+		std::unordered_map<std::string, std::bitset<64>, std::hash<std::string>, std::equal_to<std::string>, MyAllocator<std::pair<const std::string, std::bitset<64>>>> dictionaryWithAlloc(dictionary.begin(), dictionary.end());
+		cSize += dictionaryWithAlloc.get_allocator().allocationInByte();
+		std::vector<std::bitset<64>, MyAllocator<std::bitset<64>>> attributeVectorWithAlloc(attributeVector.begin(), attributeVector.end());
+		cSize += attributeVectorWithAlloc.get_allocator().allocationInByte();
+		std::vector<std::pair<std::string, std::string>, MyAllocator<std::pair<std::string, std::string>>> boundsVectorWithAlloc(boundsVector.begin(), boundsVector.end());
+		cSize += boundsVectorWithAlloc.get_allocator().allocationInByte();
+
+		// Add std::string sizes
+		for (const auto &[k, v] : dictionary) {
+			cSize += sizeOfString(k);
+		}
+		for (auto v : boundsVector) {
+			cSize += sizeof(v) + sizeOfString(v.first) + sizeOfString(v.second);
+		}
+	}
+	// Uncompressed Size
+	std::vector<std::string, MyAllocator<std::string>> uncompressedWithAlloc(column.begin(), column.end());
+	size_t uSize = uncompressedWithAlloc.get_allocator().allocationInByte();
+	uSize += sizeof(column);
+	for (auto v : uncompressedWithAlloc) {
+		uSize += sizeOfString(v);
+	}
+	// TODO Correctly compute size of std::string using std::basic_string with allocator
+	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
 
 } // end namespace Huffman

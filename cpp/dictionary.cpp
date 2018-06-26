@@ -264,21 +264,18 @@ Benchmark::CompressionResult benchmark_with_dtype(const std::vector<D> &column, 
 
 	// Compressed Size
 	// 	Attribute Vector
-	std::vector<C, MyAllocator<C>> compressedWithAlloc(MyAllocator<C>{});
-	compressedWithAlloc.reserve(compressedColumn.second.size());
-	std::copy(compressedColumn.second.begin(), compressedColumn.second.end(), std::back_inserter(compressedWithAlloc));
+	std::vector<C, MyAllocator<C>> compressedWithAlloc(compressedColumn.second.begin(), compressedColumn.second.end());
 	size_t cSize = compressedWithAlloc.get_allocator().allocationInByte();
+	cSize += sizeof(compressedColumn.second);
 	//	Dictionary
-	std::vector<D, MyAllocator<D>> dictionaryWithAlloc(MyAllocator<D>{});
-	dictionaryWithAlloc.reserve(compressedColumn.first.size());
-	std::copy(compressedColumn.first.begin(), compressedColumn.first.end(), std::back_inserter(dictionaryWithAlloc));
+	std::vector<D, MyAllocator<D>> dictionaryWithAlloc(compressedColumn.first.begin(), compressedColumn.first.end());
 	cSize += dictionaryWithAlloc.get_allocator().allocationInByte();
+	cSize += sizeof(compressedColumn.first);
 
 	// Uncompressed Size
-	std::vector<D, MyAllocator<D>> uncompressedWithAlloc(MyAllocator<D>{});
-	uncompressedWithAlloc.reserve(column.size());
-	std::copy(column.begin(), column.end(), std::back_inserter(uncompressedWithAlloc));
+	std::vector<D, MyAllocator<D>> uncompressedWithAlloc(column.begin(), column.end());
 	size_t uSize = uncompressedWithAlloc.get_allocator().allocationInByte();
+	uSize += sizeof(column);
 	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
 
@@ -314,8 +311,8 @@ Benchmark::CompressionResult benchmark_with_dtype(const std::vector<std::string>
 	std::copy(compressedColumn.first.begin(), compressedColumn.first.end(), std::back_inserter(dictionaryWithAlloc));
 	cSize += dictionaryWithAlloc.get_allocator().allocationInByte();
 	//		Size of individual std::string
-	for(const auto &v : dictionaryWithAlloc) {
-		cSize += v.size() * sizeof(std::string::value_type);
+	for(auto v : dictionaryWithAlloc) {
+		cSize += sizeOfString(v);
 	}
 
 	// Uncompressed Size
@@ -324,8 +321,8 @@ Benchmark::CompressionResult benchmark_with_dtype(const std::vector<std::string>
 	std::copy(column.begin(), column.end(), std::back_inserter(uncompressedWithAlloc));
 	size_t uSize = uncompressedWithAlloc.get_allocator().allocationInByte();
 	//		Size of individual std::string
-	for(const auto &v : uncompressedWithAlloc) {
-		uSize += v.size() * sizeof(std::string::value_type);
+	for(auto v : uncompressedWithAlloc) {
+		uSize += sizeOfString(v);
 	}
 	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
