@@ -210,19 +210,21 @@ template <typename D>
 Benchmark::CompressionResult benchmark(const std::vector<D> &column, int runs, int warmup, bool clearCache) {
 	std::cout << "Huffman - Compressing column" << std::endl;
 	auto compressedColumn = compress<D, 64>(column);
+	auto compressedPair = std::make_pair(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
 	std::cout << "Huffman - Decompressing column" << std::endl;
-	assert(column == decompress(compressedColumn));
-	std::function<std::pair<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>> ()> compressFunction = [&column]() {
+	assert(column == decompress(compressedPair));
+	// std::tuple<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<D, D>>>
+	std::function<std::tuple<std::unordered_map<D, std::bitset<64>>, std::vector<std::bitset<64>>, std::vector<std::pair<D, D>>> ()> compressFunction = [&column]() {
 		return compress<D, 64>(column);
 	};
-	std::function<std::vector<D> ()> decompressFunction = [&compressedColumn]() {
-		return decompress(compressedColumn);
+	std::function<std::vector<D> ()> decompressFunction = [&compressedPair]() {
+		return decompress(compressedPair);
 	};
 	std::cout << "Huffman - Benchmarking Compression" << std::endl;
 	auto compressRuntimes = Benchmark::benchmark(compressFunction, runs, warmup, clearCache);
 	std::cout << "Huffman - Benchmarking Decompression" << std::endl;
 	auto decompressRuntimes = Benchmark::benchmark(decompressFunction, runs, warmup, clearCache);
-	size_t cSize = compressedSize(compressedColumn);
+	size_t cSize = compressedSize(compressedPair);
 	size_t uSize = (sizeof(column) + sizeof(D) * column.size());
 	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
