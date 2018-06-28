@@ -498,7 +498,6 @@ Benchmark::CompressionResult benchmark(const std::vector<std::string> &column, i
 	for (auto v : uncompressedWithAlloc) {
 		uSize += sizeOfString(v);
 	}
-	// TODO Correctly compute size of std::string using std::basic_string with allocator
 	return Benchmark::CompressionResult(compressRuntimes, decompressRuntimes, cSize, uSize);
 }
 
