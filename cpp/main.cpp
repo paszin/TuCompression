@@ -196,6 +196,151 @@ std::pair<Benchmark::CompressionResult, Benchmark::OpResult> dictionaryBenchmark
 	return std::pair(compressionResult, opResult);
 }
 
+template <typename C>
+std::pair<Benchmark::CompressionResult, Benchmark::OpResult> huffmanBenchmarkColumn(int i, std::vector<std::string> &column, std::vector<std::string> &header,
+        int runs, int warmup, bool clearCache, bool compress, bool op) {
+	std::cout << "Huffman - Benchmarking column (" << i + 1 << "/" << header.size() << "): " << header[i] << std::endl;
+	Benchmark::CompressionResult compressionResult;
+	Benchmark::OpResult opResult;
+	if (i == 0 || i == 1 || i == 7) {
+		// Column to int
+		std::vector<int> convertedColumn;
+		std::transform(column.begin(), column.end(), std::back_inserter(convertedColumn), [](const std::string & str) { return std::stoi(str); });
+		//if (compress) {
+		//	compressionResult = Huffman::benchmark_with_dtype<int, C>(convertedColumn, runs, warmup, clearCache);
+		//}
+		if (op) {
+			auto compressedColumn = Huffman::compress<int, 64>(convertedColumn);
+			//auto dictionary = std::get<0>(compressedColumn);
+			//auto attributeVector = std::get<1>(compressedColumn);
+			//auto bounds = std::get<2>(compressedColumn);
+			if (i == 7) {
+				// SHIPPRIORITY
+				{
+					auto func = [](std::pair<std::vector<int>, std::vector<C>> &col) -> size_t {
+						return Huffman::sum_where_op_range(std::get<0>(col), std::get<1>(col), std::get<2>(col));
+					};
+		 			auto runtimes = Huffman::benchmark_op_with_dtype<int, C, size_t>(compressedColumn, runs, warmup, clearCache, func);
+		 			opResult.aggregateRuntimes.push_back(runtimes);
+		 			opResult.aggregateNames.push_back("sum");
+				}
+			}
+		}
+	}
+	else if (false && i == 4) {
+		// Column to std::time_t
+		// ORDERDATE
+		std::vector<std::time_t> convertedColumn;
+		auto transform_fn = [](const std::string & str) {
+			std::tm t = {};
+			std::istringstream ss(str);
+			ss >> std::get_time(&t, "%Y-%m-%d");
+			if (ss.fail()) {
+				throw std::invalid_argument("Cannot convert " + str + " to time");
+			}
+			return std::mktime(&t);
+		};
+	 	std::transform(column.begin(), column.end(), std::back_inserter(convertedColumn), transform_fn);
+	// 	if (compress) {
+	// 		compressionResult = Huffman::benchmark_with_dtype<std::time_t, C>(convertedColumn, runs, warmup, clearCache);
+	// 	}
+		if (op) {
+			auto compressedColumn = Huffman::compress<std::time_t, 64>(convertedColumn);
+			{
+				// 1996-01-02
+				std::tm date;
+				date.tm_mon = 0;
+				date.tm_sec = 0;
+				date.tm_min = 0;
+				date.tm_hour = 0;
+				date.tm_wday = 0;
+				date.tm_yday = 0;
+				date.tm_year = 96;
+				date.tm_mday = 2;
+
+				auto func = [date](std::pair<std::vector<std::time_t>, std::vector<C>> &col) -> std::vector<std::time_t> {
+					return Huffman::values_where_range_op(std::get<0>(col), std::get<1>(col), std::get<2>(col), NULL, std::mktime(&date) );
+				};
+				auto runtimes = Huffman::benchmark_op_with_dtype<std::time_t, C, std::vector<std::time_t>>(compressedColumn, runs, warmup, clearCache, func);
+				opResult.aggregateRuntimes.push_back(runtimes);
+				opResult.aggregateNames.push_back("where_view_less_1996-01-02");
+			}
+		}
+	}
+	else if (false && i == 3) {
+		// Column to float
+		// TOTALPRICE
+		std::vector<float> convertedColumn;
+		std::transform(column.begin(), column.end(), std::back_inserter(convertedColumn), [](const std::string & str) { return std::stof(str); });
+		// if (compress) {
+		// 	compressionResult = Huffman::benchmark_with_dtype<float, C>(convertedColumn, runs, warmup, clearCache);
+		// }
+		if (op) {
+			auto compressedColumn = Huffman::compress<float, C>(convertedColumn);
+			{
+				auto func = [](std::pair<std::vector<float>, std::vector<C>> &col) -> float {
+					return Huffman::min_op(std::get<2>(col));
+				};
+				auto runtimes = Huffman::benchmark_op_with_dtype<float, C, float>(compressedColumn, runs, warmup, clearCache, func);
+				opResult.aggregateRuntimes.push_back(runtimes);
+				opResult.aggregateNames.push_back("min");
+			}
+			{
+				auto func = [](std::pair<std::vector<float>, std::vector<C>> &col) -> float {
+					return Huffman::max_op(std::get<2>(col));
+				};
+				auto runtimes = Huffman::benchmark_op_with_dtype<float, C, float>(compressedColumn, runs, warmup, clearCache, func);
+				opResult.aggregateRuntimes.push_back(runtimes);
+				opResult.aggregateNames.push_back("max");
+			}
+			{
+				auto func = [](std::pair<std::vector<float>, std::vector<C>> &col) -> float {
+					return Huffman::avg_op(std::get<0>(col), std::get<1>(col), std::get<2>(col));
+				};
+				auto runtimes = Huffman::benchmark_op_with_dtype<float, C, float>(compressedColumn, runs, warmup, clearCache, func);
+				opResult.aggregateRuntimes.push_back(runtimes);
+				opResult.aggregateNames.push_back("avg");
+			}
+			{
+				auto func = [](std::pair<std::vector<float>, std::vector<C>> &col) -> float {
+					return Huffman::sum_where_op_range(std::get<0>(col), std::get<1>(col), std::get<2>(col), NULL, NULL);
+				};
+				auto runtimes = Huffman::benchmark_op_with_dtype<float, C, float>(compressedColumn, runs, warmup, clearCache, func);
+				opResult.aggregateRuntimes.push_back(runtimes);
+				opResult.aggregateNames.push_back("sum");
+			}
+		}
+	}
+	else {
+		// Column as string
+		// if (compress) {
+		// 	compressionResult = Huffman::benchmark_with_dtype<C>(column, runs, warmup, clearCache);
+		// }
+		if (op) {
+			auto compressedColumn = Huffman::compress<std::string, C>(column);
+			if (i == 2) {
+				// ORDERSTATUS
+				{
+					auto func = [](std::pair<std::vector<std::string>, std::vector<C>> &col) -> size_t {
+						return Huffman::count_where_op_equal<std::string, 64>(std::get<0>(col), std::get<1>(col), std::get<2>(col), "O");
+					};
+					auto runtimes = Huffman::benchmark_op_with_dtype<std::string, C, size_t>(compressedColumn, runs, warmup, clearCache, func);
+					opResult.aggregateRuntimes.push_back(runtimes);
+					opResult.aggregateNames.push_back("count_where_equals_O");
+				}
+				{
+					auto func = [](std::pair<std::vector<std::string>, std::vector<C>> &col) -> size_t {
+						return Huffman::count_where_op_equal(std::get<0>(col), std::get<1>(col), std::get<2>(col), "P");
+					};
+					auto runtimes = Huffman::benchmark_op_with_dtype<std::string, C, size_t>(compressedColumn, runs, warmup, clearCache, func);
+					opResult.aggregateRuntimes.push_back(runtimes);
+					opResult.aggregateNames.push_back("count_where_equals_P");
+				}
+			}
+		}
+	}
+	return std::pair(compressionResult, opResult);
+}
 
 void fullDictionaryBenchmark(std::vector<std::vector<std::string>> &table, std::vector<std::string> &header,
                              int runs, int warmup, bool clearCache, bool compress, bool op,
