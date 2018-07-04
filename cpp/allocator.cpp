@@ -61,5 +61,5 @@ public:
 
 size_t sizeOfString(std::string str) {
 	std::basic_string<char, std::char_traits<char>, MyAllocator<char>> strWithAlloc(str);
-	return strWithAlloc.get_allocator().allocationInByte() + sizeof(str);
+	return strWithAlloc.get_allocator().allocationInByte();
 }
