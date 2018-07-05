@@ -501,16 +501,23 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 	std::vector<Benchmark::OpResult> results;
 	Benchmark::OpResult opResult;
 	int i = 3; //TOTALPRICE
-	std::vector<int> convertedColumn;
+	std::vector<double> convertedColumn;
 	std::transform(table[i].begin(), table[i].end(), std::back_inserter(convertedColumn), [](const std::string & str) { return std::stoi(str); });
-	auto compressedColumn = Huffman::compress<int, 64>(convertedColumn);
-	auto func = [](std::pair<std::vector<int>, std::vector<C>> &col) -> size_t {
-						return Huffman::sum_where_op_range(std::get<0>(col), std::get<1>(col), std::get<2>(col));
-					};
-	auto runtimes = Huffman::benchmark_op_with_dtype<int, WAS_MUSS_HIER_HIN, size_t>(compressedColumn, runs, warmup, clearCache, func);
-	opResult.aggregateRuntimes.push_back(runtimes);
-	opResult.aggregateNames.push_back("sum_totalprice");
-	results.push_back(opResult);
+	auto compressedColumn = Huffman::compress<double, 64>(convertedColumn);
+	Huffman::compressedData<double, 64> compressedData;
+	compressedData.dictionary = std::get<0>(compressedColumn);
+	compressedData.compressed = std::get<1>(compressedColumn);
+	compressedData.bounds = std::get<2>(compressedColumn);
+
+	// auto func = [](std::tuple<	std::unordered_map<double, std::bitset<64>>,
+    // std::vector<std::bitset<64>>,
+    // std::vector<std::pair<double, double>>> &col) -> double {
+	// 					return Huffman::sum_where_op_range<double, 64>>(std::get<0>(col), std::get<1>(col), std::get<2>(col));
+	// 				};
+	// auto runtimes = Huffman::benchmark_op_with_dtype<double>(compressedColumn, runs, warmup, clearCache, func);
+	// opResult.aggregateRuntimes.push_back(runtimes);
+	// opResult.aggregateNames.push_back("sum_totalprice");
+	// results.push_back(opResult);
 
 	//TOTALPRICE < 229815.16 (80% selectivity)
 

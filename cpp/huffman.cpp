@@ -2,6 +2,14 @@
 
 namespace Huffman
 {
+
+template <typename D, size_t SIZE>
+struct compressedData {
+	std::unordered_map<D, std::bitset<SIZE>> dictionary;
+    std::vector<std::bitset<SIZE>> compressed;
+    std::vector<std::pair<D, D>> bounds;
+};
+
 class IHuffmanNode
 {
 public:
@@ -506,10 +514,17 @@ Benchmark::CompressionResult benchmark(const std::vector<std::string> &column, i
 	C == Compressed type
 	R == OP return type
 */
-template <typename D, typename C, typename R>
-std::vector<size_t> benchmark_op_with_dtype(const std::pair<std::vector<D>, std::vector<C>> &compressedColumn, int runs, int warmup, bool clearCache,
-        std::function<R (std::pair<std::vector<D>, std::vector<C>>&)> func) {
-	std::function<R ()> fn = std::bind(func, compressedColumn);
+template <typename D>
+std::vector<size_t> benchmark_op_with_dtype(std::tuple<
+	std::unordered_map<D, std::bitset<64>>,
+    std::vector<std::bitset<64>>,
+    std::vector<std::pair<D, D>>> &compressedColumn,
+	int runs, int warmup, bool clearCache,
+        std::function<size_t (std::tuple<
+			std::unordered_map<D, std::bitset<64>>,
+    		std::vector<std::bitset<64>>,
+    		std::vector<std::pair<D, D>>>&)> func) {
+	std::function<size_t ()> fn = std::bind(func, compressedColumn);
 	return Benchmark::benchmark(fn, runs, warmup, clearCache);
 }
 
