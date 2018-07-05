@@ -196,6 +196,7 @@ std::pair<Benchmark::CompressionResult, Benchmark::OpResult> dictionaryBenchmark
 	return std::pair(compressionResult, opResult);
 }
 
+
 template <typename C>
 std::pair<Benchmark::CompressionResult, Benchmark::OpResult> huffmanBenchmarkColumn(int i, std::vector<std::string> &column, std::vector<std::string> &header,
         int runs, int warmup, bool clearCache, bool compress, bool op) {
@@ -491,10 +492,96 @@ void fullHuffmanBenchmark(std::vector<std::vector<std::string>> &table, std::vec
 	// }
 }
 
+void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<std::string> &header,
+                          int runs, int warmup, bool clearCache,
+                          std::string cRatioFile, std::string cSizeFile, std::string uSizeFile, std::string cTimesFile, std::string dcTimesFile) {
+
+	std::string dataDirectory = "../data/slides_aggs/";
+
+	std::vector<Benchmark::OpResult> results;
+	Benchmark::OpResult opResult;
+	int i = 3; //TOTALPRICE
+	std::vector<int> convertedColumn;
+	std::transform(table[i].begin(), table[i].end(), std::back_inserter(convertedColumn), [](const std::string & str) { return std::stoi(str); });
+	auto compressedColumn = Huffman::compress<int, 64>(convertedColumn);
+	auto func = [](std::pair<std::vector<int>, std::vector<C>> &col) -> size_t {
+						return Huffman::sum_where_op_range(std::get<0>(col), std::get<1>(col), std::get<2>(col));
+					};
+	auto runtimes = Huffman::benchmark_op_with_dtype<int, WAS_MUSS_HIER_HIN, size_t>(compressedColumn, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("sum_totalprice");
+	results.push_back(opResult);
+
+	//TOTALPRICE < 229815.16 (80% selectivity)
+
+	//TOTALPRICE < 99498.77 (50% selectivity)
+
+	//TOTALPRICE < 21871.0 (1% selcectivity)
+
+	//CLERK:​
+
+	// 80 (80.31 %): x >= "Clerk#000001980"​
+
+	// 50 (50.17 %): x <= "Clerk#000005100"​
+
+	// 10 (10.31 %): x <= "Clerk#000000741"​
+
+	// ​
+
+	// ORDERPRIORITY:​
+
+	// 80 (80.00%): x <= "5"​
+
+	// 60 (59.99 %): x <= "4"​
+
+	// (40 (40.00%): x <= "3")​
+
+	// 20 (20.01%): x <= "2"​
+
+// 	ORDERDATE:​
+
+// 80 (80.97 %): >= 1993-10-27 ​
+
+// 50 (53.11 %):  >= 1996-01-02​
+
+// 10 (9.68 %): >= 1996-12-19​
+
+// 1 (1.51 %): >= 1998-07-21​
+
+// ​
+
+// CUSTKEY:​
+
+// 80 (80.00 %): >= 184560​
+
+// 50 (50.00 %): >= 452260​
+
+// 10 (10.00 %): >= 810600​
+
+// ​
+	
+	
+	std::cout << "Slide Aggs - Finished" << std::endl;
+	std::vector<double> cRatios;
+	std::vector<size_t> cSizes;
+	std::vector<size_t> uSizes;
+	std::vector<std::vector<size_t>> cTimes;
+	std::vector<std::vector<size_t>> dcTimes;
+	for (int j = 0; j < results.size(); ++j) {
+		for (int i = 0; i < results[j].aggregateRuntimes.size(); ++i)
+		{
+			auto times = results[j].aggregateRuntimes[i];
+			auto name = results[j].aggregateNames[i];
+			CSV::writeLine<size_t>(header, times, dataDirectory + "AGG__" + header[j] + "__" + name + ".csv");
+		}
+	}
+}
+
+
 
 int main(int argc, char* argv[]) {
-	int runs = 300;
-	int warmup = 2;
+	int runs = 3;
+	int warmup = 1;
 	bool clearCache = false;
 
 	// ------------------- Parse Flags -------------- //
@@ -507,6 +594,7 @@ int main(int argc, char* argv[]) {
 	bool huffman = false;
 	bool compress = false;
 	bool op = false;
+	bool slides = false;
 	for (auto arg : args) {
 		if (arg == "-dictionary") {
 			std::cout << "Enabled: dictionary" << std::endl;
@@ -523,6 +611,10 @@ int main(int argc, char* argv[]) {
 		else if (arg == "-op") {
 			std::cout << "Enabled: op" << std::endl;
 			op = true;
+		}
+		else if (arg == "-slide-aggs") {
+			std::cout << "Enabled: benchmark for aggregation in slides" << std::endl;
+			slides = true;
 		}
 		else {
 			std::cerr << arg << " is an unrecognised flag.\nThe following flags are allowed:\n\t-dictionary\n\t-huffman\n\t-compress (enables compression benchmarks)\n\t-op (enables operation benchmarks)\n\tor no flag of either pairs to enable both" << std::endl;
@@ -543,7 +635,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// ------------------- Load Table -------------- //
-	std::string dataFile = "../data/order.tbl";
+	std::string dataFile = "../data/order.1000.tbl";
 	auto header = CSV::headerFromFile(dataFile);
 	std::cout << "Loading table" << std::endl;
 	auto start = std::chrono::system_clock::now();
@@ -567,6 +659,9 @@ int main(int argc, char* argv[]) {
 		}
 		if (huffman) {
 			fullHuffmanBenchmark(table, header, runs, warmup, clearCache, cRatioFile, cSizeFile, uSizeFile, cTimesFile, dcTimesFile);
+		}
+		if (slides) {
+			slidesBenchmark(table, header, runs, warmup, clearCache, cRatioFile, cSizeFile, uSizeFile, cTimesFile, dcTimesFile);
 		}
 	} catch (const std::invalid_argument& e) {
 		return 0;
