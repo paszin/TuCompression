@@ -368,20 +368,20 @@ template <typename D, std::size_t SIZE>
 std::vector<D> values_where_range_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
                                      std::vector<std::bitset<SIZE>> compressed,
                                      std::vector<std::pair<D, D>> bounds,
-                                     D from = NULL, D to = NULL) {
+                                     std::optional<D> from = std::optional<D>(), std::optional<D> to = std::optional<D>()) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	std::vector<D> result;
 	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
-		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
+		if ((to && bounds[i].first > to) || (from && bounds[i].second <= from )) {
 			continue;
 		}
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
 		for (size_t j = 0; j < block.size(); j++)
 		{
-			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
-			        (from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+			if ((to && block[j] < to) && (!from || block[j] >= from) ||
+			        (from && block[j] >= from) && (!to || block[j] < to))
 			{
 				result.push_back(block[j]);
 			}
@@ -392,9 +392,9 @@ std::vector<D> values_where_range_op(std::unordered_map<D, std::bitset<SIZE>> di
 }
 
 template <typename D, std::size_t SIZE>
-std::vector<D> indexes_where_range_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
+std::vector<size_t> indexes_where_range_op(std::unordered_map<D, std::bitset<SIZE>> dictionary,
                                       std::vector<std::bitset<SIZE>> compressed,
-                                      D from = NULL, D to = NULL) {
+                                      std::optional<D> from = std::optional<D>(), std::optional<D> to = std::optional<D>()) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	std::vector<D> result;
 	size_t index = 0;
@@ -403,8 +403,8 @@ std::vector<D> indexes_where_range_op(std::unordered_map<D, std::bitset<SIZE>> d
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
 		for (size_t j = 0; j < block.size(); j++)
 		{
-			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
-			        (from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+			if ((to && block[j] < to) && (!from  || block[j] >= from) ||
+			        (from && block[j] >= from) && (!to || block[j] < to))
 			{
 				result.push_back(index);
 			}
@@ -519,7 +519,7 @@ template <typename D, typename R>
 std::vector<size_t> benchmark_op_with_dtype(compressedData<D, 64> &compressedColumn,
 	int runs, int warmup, bool clearCache,
     std::function<R (compressedData<D, 64>)> func) {
-	std::function<size_t ()> fn = std::bind(func, compressedColumn);
+	std::function<R ()> fn = std::bind(func, compressedColumn);
 	return Benchmark::benchmark(fn, runs, warmup, clearCache);
 	std::vector<size_t> res;
 	return res;

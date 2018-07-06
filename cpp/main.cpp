@@ -571,6 +571,13 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 	results.push_back(opResult);
 
 	// 50 (50.17 %): x <= "Clerk#000005100"​
+	auto func2 = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::values_where_range_op<std::string, 64>(col.dictionary, col.compressed,col.bounds, {}, {"Clerk#000001980"});
+	 				};
+	runtimes = Huffman::benchmark_op_with_dtype<std::string, std::vector<std::string>>(compressedData, runs, warmup, clearCache, func2);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("values_clerk_80");
+	results.push_back(opResult);
 
 	// 10 (10.31 %): x <= "Clerk#000000741"​
 
