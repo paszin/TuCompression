@@ -509,15 +509,14 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 	compressedData.compressed = std::get<1>(compressedColumn);
 	compressedData.bounds = std::get<2>(compressedColumn);
 
-	// auto func = [](std::tuple<	std::unordered_map<double, std::bitset<64>>,
-    // std::vector<std::bitset<64>>,
-    // std::vector<std::pair<double, double>>> &col) -> double {
-	// 					return Huffman::sum_where_op_range<double, 64>>(std::get<0>(col), std::get<1>(col), std::get<2>(col));
-	// 				};
-	// auto runtimes = Huffman::benchmark_op_with_dtype<double>(compressedColumn, runs, warmup, clearCache, func);
-	// opResult.aggregateRuntimes.push_back(runtimes);
-	// opResult.aggregateNames.push_back("sum_totalprice");
-	// results.push_back(opResult);
+	std::function<double (Huffman::compressedData<double, 64>)> func = [](Huffman::compressedData<double, 64> col) {
+	 					return Huffman::sum_where_op_range<double, 64>(col.dictionary, col.compressed, col.bounds);
+	 				};
+	//func(compressedData);
+	auto runtimes = Huffman::benchmark_op_with_dtype<double>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("sum_totalprice");
+	results.push_back(opResult);
 
 	//TOTALPRICE < 229815.16 (80% selectivity)
 
@@ -628,13 +627,13 @@ int main(int argc, char* argv[]) {
 			return 1;
 		}
 	}
-	if (compress == false && op == false) {
+	if (compress == false && op == false && !slides) {
 		std::cout << "Enabled: compress" << std::endl;
 		compress = true;
 		std::cout << "Enabled: op" << std::endl;
 		op = true;
 	}
-	if (dictionary == false && huffman == false) {
+	if (dictionary == false && huffman == false && !slides) {
 		std::cout << "Enabled: dictionary" << std::endl;
 		dictionary = true;
 		std::cout << "Enabled: huffman" << std::endl;
@@ -642,7 +641,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// ------------------- Load Table -------------- //
-	std::string dataFile = "../data/order.1000.tbl";
+	std::string dataFile = "../data/order.tbl";
 	auto header = CSV::headerFromFile(dataFile);
 	std::cout << "Loading table" << std::endl;
 	auto start = std::chrono::system_clock::now();

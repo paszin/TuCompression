@@ -515,17 +515,13 @@ Benchmark::CompressionResult benchmark(const std::vector<std::string> &column, i
 	R == OP return type
 */
 template <typename D>
-std::vector<size_t> benchmark_op_with_dtype(std::tuple<
-	std::unordered_map<D, std::bitset<64>>,
-    std::vector<std::bitset<64>>,
-    std::vector<std::pair<D, D>>> &compressedColumn,
+std::vector<size_t> benchmark_op_with_dtype(compressedData<D, 64> &compressedColumn,
 	int runs, int warmup, bool clearCache,
-        std::function<size_t (std::tuple<
-			std::unordered_map<D, std::bitset<64>>,
-    		std::vector<std::bitset<64>>,
-    		std::vector<std::pair<D, D>>>&)> func) {
+    std::function<D (compressedData<D, 64>)> func) {
 	std::function<size_t ()> fn = std::bind(func, compressedColumn);
 	return Benchmark::benchmark(fn, runs, warmup, clearCache);
+	std::vector<size_t> res;
+	return res;
 }
 
 } // end namespace Huffman
