@@ -1,4 +1,4 @@
-#include <stddef.h>
+#include <optional>
 
 namespace Huffman
 {
@@ -261,24 +261,25 @@ size_t count_where_op_equal(std::unordered_map<D, std::bitset<SIZE>> dictionary,
 	return count;
 }
 
+
 template <typename D, std::size_t SIZE>
 size_t count_where_op_range(std::unordered_map<D, std::bitset<SIZE>> dictionary,
                             std::vector<std::bitset<SIZE>> compressed,
                             std::vector<std::pair<D, D>> bounds,
-                            D from = NULL, D to = NULL) {
+                            std::optional<D> from = std::optional<D>(), std::optional<D> to = std::optional<D>()) {
 	std::unordered_map<std::bitset<SIZE>, D> reverseDictionary = getReverseDictionary(dictionary);
 	int count = 0;
 	for (size_t i = 0; i < compressed.size(); i++)
 	{
 		//std::cout << bounds[i].first << " - " << bounds[i].second << '\n';
-		if ((to != NULL && bounds[i].first > to) || (from != NULL && bounds[i].second <= from )) {
+		if ((to && bounds[i].first > to) || (from && bounds[i].second <= from )) {
 			continue;
 		}
 		auto block = decompressBlock<D, SIZE>(compressed[i], reverseDictionary);
 		for (size_t j = 0; j < block.size(); j++)
 		{
-			if ((to != NULL && block[j] < to) && (from == NULL || block[j] >= from) ||
-			        (from != NULL && block[j] >= from) && (to == NULL || block[j] < to))
+			if ((to && block[j] < to) && (!from || block[j] >= from) ||
+			        (from && block[j] >= from) && (!to || block[j] < to))
 			{
 				count++;
 			}
@@ -514,10 +515,10 @@ Benchmark::CompressionResult benchmark(const std::vector<std::string> &column, i
 	C == Compressed type
 	R == OP return type
 */
-template <typename D>
+template <typename D, typename R>
 std::vector<size_t> benchmark_op_with_dtype(compressedData<D, 64> &compressedColumn,
 	int runs, int warmup, bool clearCache,
-    std::function<D (compressedData<D, 64>)> func) {
+    std::function<R (compressedData<D, 64>)> func) {
 	std::function<size_t ()> fn = std::bind(func, compressedColumn);
 	return Benchmark::benchmark(fn, runs, warmup, clearCache);
 	std::vector<size_t> res;

@@ -87,10 +87,16 @@ int main(int argc, char const *argv[])
 		std::vector<std::string> expected = {"6", "7", "8", "9"};
 		auto compressedColumn = Huffman::compress<std::string, 64>(column);
 		auto compressedPair = std::make_pair(std::get<0>(compressedColumn), std::get<1>(compressedColumn));
-		{
-			auto decompressed = Huffman::decompress(compressedPair);
-			assert(column == decompressed);
-		}
+		auto decompressed = Huffman::decompress(compressedPair);
+		//assert(column == decompressed);
+
+		auto dictionary = std::get<0>(compressedColumn);
+		auto attributeVector = std::get<1>(compressedColumn);
+		auto bounds = std::get<2>(compressedColumn);
+
+
+		size_t count = Huffman::count_where_op_range<std::string, 64>(std::get<0>(compressedColumn), std::get<1>(compressedColumn), std::get<2>(compressedColumn), "1");
+		std::cout << "count " << count << '\n';
 	}
 
 	return 0;

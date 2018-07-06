@@ -500,6 +500,8 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 
 	std::vector<Benchmark::OpResult> results;
 	Benchmark::OpResult opResult;
+	
+	{
 	int i = 3; //TOTALPRICE
 	std::vector<double> convertedColumn;
 	std::transform(table[i].begin(), table[i].end(), std::back_inserter(convertedColumn), [](const std::string & str) { return std::stoi(str); });
@@ -513,26 +515,68 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 	 					return Huffman::sum_where_op_range<double, 64>(col.dictionary, col.compressed, col.bounds);
 	 				};
 	//func(compressedData);
-	auto runtimes = Huffman::benchmark_op_with_dtype<double>(compressedData, runs, warmup, clearCache, func);
+	auto runtimes = Huffman::benchmark_op_with_dtype<double, double>(compressedData, runs, warmup, clearCache, func);
 	opResult.aggregateRuntimes.push_back(runtimes);
 	opResult.aggregateNames.push_back("sum_totalprice");
 	results.push_back(opResult);
 
 	//TOTALPRICE < 229815.16 (80% selectivity)
+	func = [](Huffman::compressedData<double, 64> col) {
+	 					return Huffman::sum_where_op_range<double, 64>(col.dictionary, col.compressed, col.bounds, NULL, 229815.16);
+	 				};
+	runtimes = Huffman::benchmark_op_with_dtype<double, double>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("sum_totalprice_80");
+	results.push_back(opResult);
+
 
 	//TOTALPRICE < 99498.77 (50% selectivity)
+	func = [](Huffman::compressedData<double, 64> col) {
+	 					return Huffman::sum_where_op_range<double, 64>(col.dictionary, col.compressed, col.bounds, NULL, 99498.77);
+	 				};
+	runtimes = Huffman::benchmark_op_with_dtype<double, double>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("sum_totalprice_50");
+	results.push_back(opResult);
 
 	//TOTALPRICE < 21871.0 (1% selcectivity)
-
+	func = [](Huffman::compressedData<double, 64> col) {
+	 					return Huffman::sum_where_op_range<double, 64>(col.dictionary, col.compressed, col.bounds, NULL, 21871.0);
+	 				};
+	runtimes = Huffman::benchmark_op_with_dtype<double, double>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("sum_totalprice_1");
+	results.push_back(opResult);
+	}
+	
+	{
 	//CLERK:​
+	int i = 6; //CLERK
+	std::vector<std::string> convertedColumn;
+	std::transform(table[i].begin(), table[i].end(), std::back_inserter(convertedColumn), [](const std::string & str) { return str; });
+	auto compressedColumn = Huffman::compress<std::string, 64>(convertedColumn);
+	Huffman::compressedData<std::string, 64> compressedData;
+	compressedData.dictionary = std::get<0>(compressedColumn);
+	compressedData.compressed = std::get<1>(compressedColumn);
+	compressedData.bounds = std::get<2>(compressedColumn);
+
 
 	// 80 (80.31 %): x >= "Clerk#000001980"​
+	auto func = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {}, {"Clerk#000001980"});
+	 				};
+	auto runtimes = Huffman::benchmark_op_with_dtype<std::string, size_t>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("values_clerk_80");
+	results.push_back(opResult);
 
 	// 50 (50.17 %): x <= "Clerk#000005100"​
 
 	// 10 (10.31 %): x <= "Clerk#000000741"​
 
 	// ​
+
+	}
 
 	// ORDERPRIORITY:​
 
