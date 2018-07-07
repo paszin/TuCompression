@@ -563,12 +563,13 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 
 	// 80 (80.31 %): x >= "Clerk#000001980"​
 	auto func = [](Huffman::compressedData<std::string, 64> col) {
-	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {}, {"Clerk#000001980"});
+	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {"Clerk#000001980"}, {});
 	 				};
 	auto runtimes = Huffman::benchmark_op_with_dtype<std::string, size_t>(compressedData, runs, warmup, clearCache, func);
 	opResult.aggregateRuntimes.push_back(runtimes);
-	opResult.aggregateNames.push_back("values_clerk_80");
+	opResult.aggregateNames.push_back("count_clerk_80");
 	results.push_back(opResult);
+	
 
 	// 50 (50.17 %): x <= "Clerk#000005100"​
 	auto func2 = [](Huffman::compressedData<std::string, 64> col) {
@@ -576,24 +577,69 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 	 				};
 	runtimes = Huffman::benchmark_op_with_dtype<std::string, std::vector<std::string>>(compressedData, runs, warmup, clearCache, func2);
 	opResult.aggregateRuntimes.push_back(runtimes);
-	opResult.aggregateNames.push_back("values_clerk_80");
+	opResult.aggregateNames.push_back("values_clerk_50");
 	results.push_back(opResult);
 
-	// 10 (10.31 %): x <= "Clerk#000000741"​
+	// // 10 (10.31 %): x <= "Clerk#000000741"​
+	auto func3 = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::values_where_range_op<std::string, 64>(col.dictionary, col.compressed,col.bounds, {}, {"Clerk#000000741"});
+	 				};
+	runtimes = Huffman::benchmark_op_with_dtype<std::string, std::vector<std::string>>(compressedData, runs, warmup, clearCache, func3);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("values_clerk_10");
+	results.push_back(opResult);
 
+}
 	// ​
+	{
+	// ORDERPRIORITY:​
+	int i = 5; //ORDERPRIORITY
+	std::vector<std::string> convertedColumn;
+	std::transform(table[i].begin(), table[i].end(), std::back_inserter(convertedColumn), [](const std::string & str) { return str; });
+	auto compressedColumn = Huffman::compress<std::string, 64>(convertedColumn);
+	Huffman::compressedData<std::string, 64> compressedData;
+	compressedData.dictionary = std::get<0>(compressedColumn);
+	compressedData.compressed = std::get<1>(compressedColumn);
+	compressedData.bounds = std::get<2>(compressedColumn);
 
+	// 80 (80.00%): x < "5"​
+	auto func = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {}, {"5"});
+	 				};
+	auto runtimes = Huffman::benchmark_op_with_dtype<std::string, size_t>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("count_orderprio_80");
+	results.push_back(opResult);
+
+	// // // 60 (59.99 %): x < "4"​
+	auto func2 = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {}, {"4"});
+	 				};
+	auto runtimes2 = Huffman::benchmark_op_with_dtype<std::string, size_t>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes2);
+	opResult.aggregateNames.push_back("count_orderprio_60");
+	results.push_back(opResult);
+
+	// // (40 (40.00%): x < "3")​
+	auto func3 = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {}, {"4"});
+	 				};
+	auto runtimes3 = Huffman::benchmark_op_with_dtype<std::string, size_t>(compressedData, runs, warmup, clearCache, func2);
+	opResult.aggregateRuntimes.push_back(runtimes3);
+	opResult.aggregateNames.push_back("count_orderprio_40");
+	results.push_back(opResult);
+
+	// // 20 (20.01%): x < "2"​
+	auto func4 = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {}, {"2"});
+	 				};
+	auto runtimes4 = Huffman::benchmark_op_with_dtype<std::string, size_t>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes4);
+	opResult.aggregateNames.push_back("count_orderprio_20");
+	results.push_back(opResult);
 	}
 
-	// ORDERPRIORITY:​
-
-	// 80 (80.00%): x <= "5"​
-
-	// 60 (59.99 %): x <= "4"​
-
-	// (40 (40.00%): x <= "3")​
-
-	// 20 (20.01%): x <= "2"​
+	
 
 // 	ORDERDATE:​
 
