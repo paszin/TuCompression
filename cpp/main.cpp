@@ -639,27 +639,96 @@ void slidesBenchmark(std::vector<std::vector<std::string>> &table, std::vector<s
 	results.push_back(opResult);
 	}
 
+	{
+		// 	ORDERDATE:​
+		int i = 4;
+		std::vector<std::time_t> convertedColumn;
+		auto transform_fn = [](const std::string & str) {
+			std::tm t = {};
+			std::istringstream ss(str);
+			ss >> std::get_time(&t, "%Y-%m-%d");
+			if (ss.fail()) {
+				throw std::invalid_argument("Cannot convert " + str + " to time");
+			}
+			return std::mktime(&t);
+		};
+		std::transform(table[i].begin(), table[i].end(), std::back_inserter(convertedColumn), transform_fn);
+	auto compressedColumn = Huffman::compress<std::time_t, 64>(convertedColumn);
+	Huffman::compressedData<std::time_t, 64> compressedData;
+	compressedData.dictionary = std::get<0>(compressedColumn);
+	compressedData.compressed = std::get<1>(compressedColumn);
+	compressedData.bounds = std::get<2>(compressedColumn);
+
+		// 80 (80.97 %): >= 1993-10-27 
 	
 
-// 	ORDERDATE:​
+	// auto func = [](Huffman::compressedData<std::time_t, 64> col) {
+	// 				//date = ????
+ 	// 				return Huffman::values_where_range_op<std::time_t, 64>(col.dictionary, col.compressed, col.bounds, {date}, {});
+ 	// 			};
+	// auto runtimes = Huffman::benchmark_op_with_dtype<std::tm, size_t>(compressedData, runs, warmup, clearCache, func);
+	// opResult.aggregateRuntimes.push_back(runtimes);
+	// opResult.aggregateNames.push_back("values_date_80");
+	// results.push_back(opResult);
 
-// 80 (80.97 %): >= 1993-10-27 ​
+	
 
 // 50 (53.11 %):  >= 1996-01-02​
 
 // 10 (9.68 %): >= 1996-12-19​
 
 // 1 (1.51 %): >= 1998-07-21​
+	}
+
+
+
+
 
 // ​
 
+{
 // CUSTKEY:​
+int i = 1;
+std::vector<std::string> convertedColumn;
+	std::transform(table[i].begin(), table[i].end(), std::back_inserter(convertedColumn), [](const std::string & str) { return str; });
+	auto compressedColumn = Huffman::compress<std::string, 64>(convertedColumn);
+	Huffman::compressedData<std::string, 64> compressedData;
+	compressedData.dictionary = std::get<0>(compressedColumn);
+	compressedData.compressed = std::get<1>(compressedColumn);
+	compressedData.bounds = std::get<2>(compressedColumn);
 
-// 80 (80.00 %): >= 184560​
 
-// 50 (50.00 %): >= 452260​
+	// 80 (80.00 %): >= 184560​
+	auto func = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::count_where_op_range<std::string, 64>(col.dictionary, col.compressed, col.bounds, {"184560​"}, {});
+	 				};
+	auto runtimes = Huffman::benchmark_op_with_dtype<std::string, size_t>(compressedData, runs, warmup, clearCache, func);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("count_custkey_80");
+	results.push_back(opResult);
+	
 
-// 10 (10.00 %): >= 810600​
+	// 50 (50.00 %): >= 452260​
+	auto func2 = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::values_where_range_op<std::string, 64>(col.dictionary, col.compressed,col.bounds, {"452260​"}, {});
+	 				};
+	runtimes = Huffman::benchmark_op_with_dtype<std::string, std::vector<std::string>>(compressedData, runs, warmup, clearCache, func2);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("values_custkey_50");
+	results.push_back(opResult);
+
+	
+
+	// 10 (10.00 %): >= 810600​
+	auto func3 = [](Huffman::compressedData<std::string, 64> col) {
+	 					return Huffman::values_where_range_op<std::string, 64>(col.dictionary, col.compressed,col.bounds, {"810600​"}, {});
+	 				};
+	runtimes = Huffman::benchmark_op_with_dtype<std::string, std::vector<std::string>>(compressedData, runs, warmup, clearCache, func3);
+	opResult.aggregateRuntimes.push_back(runtimes);
+	opResult.aggregateNames.push_back("values_custkey_10");
+	results.push_back(opResult);
+
+}
 
 // ​
 	
